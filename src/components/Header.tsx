@@ -119,10 +119,12 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="flex items-center gap-3 sm:gap-3.5">
               {/* Brand Icon Badge */}
               <div className="relative group">
-                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 p-0.5 shadow-md shadow-blue-500/20 ring-2 ring-blue-500/20 group-hover:ring-blue-500/40 transition-all flex items-center justify-center">
-                  <div className="w-full h-full bg-slate-900/40 rounded-[14px] flex items-center justify-center backdrop-blur-xs">
-                    <Radio className="w-5 h-5 sm:w-6 sm:h-6 text-white animate-pulse" />
-                  </div>
+                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-white dark:bg-slate-800 p-1 shadow-md shadow-blue-500/10 ring-2 ring-slate-200 dark:ring-slate-700/80 group-hover:ring-blue-500/40 transition-all flex items-center justify-center overflow-hidden">
+                  <img 
+                    src="https://raw.githubusercontent.com/syncrozz/syncrozz-assets/main/logo/RC%20Zone/android-chrome-192x192.png" 
+                    alt="RC Zone" 
+                    className="w-full h-full object-contain"
+                  />
                 </div>
                 {/* Live Online Ping Indicator */}
                 <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5">

@@ -136,8 +136,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-500/20">
-              <Settings className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
+              <img
+                src="https://raw.githubusercontent.com/syncrozz/syncrozz-assets/main/logo/RC%20Zone/android-chrome-192x192.png"
+                alt="RC Zone"
+                className="w-full h-full object-contain"
+              />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -742,13 +746,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               {/* SES 4.3 Data Integrity info & Factory Reset */}
               <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
-                <div className="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800/40 text-xs text-slate-600 dark:text-slate-300 space-y-1">
-                  <span className="font-bold block text-slate-800 dark:text-slate-200">
-                    Standard Integriti Data (SES 4.3):
-                  </span>
-                  <p>
-                    Data disimpan secara local pada peranti anda. Sesiapa memadam mesin atau rekod tidak akan di-populate semula secara paksa.
-                  </p>
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-white dark:bg-slate-900 p-1 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
+                    <img
+                      src="https://raw.githubusercontent.com/syncrozz/syncrozz-assets/main/logo/RC%20Zone/android-chrome-192x192.png"
+                      alt="RC Zone"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <div>
+                    <span className="font-extrabold text-xs text-slate-900 dark:text-white block">
+                      RC Zone Control Board Manager
+                    </span>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Standard Integriti Data (SES 4.3) • Simpanan tempatan selamat
+                    </p>
+                  </div>
                 </div>
 
                 {!showResetConfirm ? (

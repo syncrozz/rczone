@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Lock, Unlock, ShieldCheck, X, Delete, AlertCircle, KeyRound } from 'lucide-react';
-import { playTapSound, playEndingSoonSound } from '../utils/sound';
+import { Lock, ShieldCheck, X, Delete, AlertCircle } from 'lucide-react';
 
 interface AdminPinModalProps {
   isOpen: boolean;
@@ -16,7 +15,6 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
-  soundEnabled = true,
   correctPin = '5313',
   title = 'Pengesahan Mod Admin',
   description = 'Sila masukkan Kod PIN Admin (5313) untuk meneruskan tindakan ini.',
@@ -43,15 +41,13 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
 
   const verifyPin = (inputPin: string) => {
     if (inputPin === correctPin) {
-      playTapSound(soundEnabled);
       setIsSuccess(true);
       setError(false);
       setTimeout(() => {
         onSuccess();
         onClose();
-      }, 400);
+      }, 300);
     } else {
-      playEndingSoonSound(soundEnabled);
       setError(true);
       setIsShaking(true);
       setTimeout(() => {
@@ -63,7 +59,6 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
 
   const handleKeyPress = (digit: string) => {
     if (isSuccess) return;
-    playTapSound(soundEnabled);
     if (pin.length < 4) {
       const nextPin = pin + digit;
       setPin(nextPin);
@@ -76,14 +71,12 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
 
   const handleDelete = () => {
     if (isSuccess) return;
-    playTapSound(soundEnabled);
     setPin((prev) => prev.slice(0, -1));
     setError(false);
   };
 
   const handleClear = () => {
     if (isSuccess) return;
-    playTapSound(soundEnabled);
     setPin('');
     setError(false);
   };
@@ -106,7 +99,7 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, pin, isSuccess, soundEnabled, correctPin]);
+  }, [isOpen, pin, isSuccess, correctPin]);
 
   if (!isOpen) return null;
 
@@ -133,11 +126,8 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
         {/* Close Button */}
         <button
           type="button"
-          onClick={() => {
-            playTapSound(soundEnabled);
-            onClose();
-          }}
-          className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          onClick={onClose}
+          className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           title="Tutup"
         >
           <X className="w-5 h-5" />
@@ -145,14 +135,12 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
 
         {/* Icon & Title */}
         <div className="text-center space-y-2 mb-6">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-500 to-amber-600 p-0.5 shadow-lg shadow-amber-500/25 flex items-center justify-center">
-            <div className="w-full h-full bg-slate-900/40 rounded-[14px] flex items-center justify-center backdrop-blur-xs">
-              {isSuccess ? (
-                <ShieldCheck className="w-7 h-7 text-emerald-300 animate-pulse" />
-              ) : (
-                <Lock className="w-7 h-7 text-amber-300" />
-              )}
-            </div>
+          <div className="mx-auto w-14 h-14 rounded-2xl bg-white dark:bg-slate-800 p-1.5 shadow-lg shadow-amber-500/20 ring-2 ring-amber-500/30 flex items-center justify-center overflow-hidden">
+            <img 
+              src="https://raw.githubusercontent.com/syncrozz/syncrozz-assets/main/logo/RC%20Zone/android-chrome-192x192.png" 
+              alt="RC Zone" 
+              className="w-full h-full object-contain"
+            />
           </div>
 
           <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
@@ -190,7 +178,7 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
         {error && (
           <div className="mb-4 flex items-center justify-center gap-1.5 text-xs font-bold text-rose-600 dark:text-rose-400 animate-fade-in">
             <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>PIN Tidak Sah! Sila masukkan PIN yang betul.</span>
+            <span>PIN Tidak Sah! Sila cuba lagi.</span>
           </div>
         )}
 

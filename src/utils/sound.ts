@@ -1,6 +1,6 @@
 /**
  * Web Audio API Sound Synthesizer for RC Fun Ride Manager
- * Generates alarms, warning chimes, and operational feedback without external audio files.
+ * Generates pleasant chimes and session notifications without harsh buzzing.
  */
 
 let audioCtx: AudioContext | null = null;
@@ -20,28 +20,8 @@ function getAudioContext(): AudioContext | null {
 }
 
 export function playTapSound(enabled = true): void {
-  if (!enabled) return;
-  try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(800, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.05);
-
-    gain.gain.setValueAtTime(0.15, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start();
-    osc.stop(ctx.currentTime + 0.05);
-  } catch (e) {
-    console.warn('Audio play error:', e);
-  }
+  // Silent - UI click beeps disabled to prevent annoying sounds during normal interactions
+  return;
 }
 
 export function playSessionStartSound(enabled = true): void {
@@ -56,11 +36,11 @@ export function playSessionStartSound(enabled = true): void {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
-      osc.type = 'triangle';
+      osc.type = 'sine';
       osc.frequency.setValueAtTime(freq, startTime);
 
       gain.gain.setValueAtTime(0, startTime);
-      gain.gain.linearRampToValueAtTime(0.2, startTime + 0.02);
+      gain.gain.linearRampToValueAtTime(0.18, startTime + 0.02);
       gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.25);
 
       osc.connect(gain);
@@ -80,24 +60,24 @@ export function playEndingSoonSound(enabled = true): void {
     const ctx = getAudioContext();
     if (!ctx) return;
 
-    // Dual warning ping
-    [0, 0.2].forEach((offset) => {
-      const startTime = ctx.currentTime + offset;
+    // Dual soft harmonic chime (A5, C#6)
+    [880, 1108.73].forEach((freq, index) => {
+      const startTime = ctx.currentTime + index * 0.12;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, startTime); // A5
+      osc.frequency.setValueAtTime(freq, startTime);
 
       gain.gain.setValueAtTime(0, startTime);
-      gain.gain.linearRampToValueAtTime(0.25, startTime + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.15);
+      gain.gain.linearRampToValueAtTime(0.2, startTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.2);
 
       osc.connect(gain);
       gain.connect(ctx.destination);
 
       osc.start(startTime);
-      osc.stop(startTime + 0.15);
+      osc.stop(startTime + 0.2);
     });
   } catch (e) {
     console.warn('Audio play error:', e);
@@ -112,35 +92,36 @@ export function playTimeUpAlarm(enabled = true, repeat = false): void {
     const ctx = getAudioContext();
     if (!ctx) return;
 
-    const playBeepPattern = () => {
-      // 3 urgent high-frequency beeps
-      [0, 0.15, 0.3].forEach((offset) => {
-        const startTime = ctx.currentTime + offset;
+    const playChimePattern = () => {
+      // 3 pleasant bell chimes (F5 -> A5 -> C6)
+      const frequencies = [698.46, 880.00, 1046.50];
+      frequencies.forEach((freq, index) => {
+        const startTime = ctx.currentTime + index * 0.14;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
 
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(950, startTime);
-        osc.frequency.setValueAtTime(1200, startTime + 0.05);
+        osc.type = 'sine'; // Clean melodic tone, zero harsh buzzing
+        osc.frequency.setValueAtTime(freq, startTime);
 
-        gain.gain.setValueAtTime(0.28, startTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.1);
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(0.22, startTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.3);
 
         osc.connect(gain);
         gain.connect(ctx.destination);
 
         osc.start(startTime);
-        osc.stop(startTime + 0.1);
+        osc.stop(startTime + 0.3);
       });
     };
 
-    playBeepPattern();
+    playChimePattern();
 
     if (repeat) {
       if (activeAlarmInterval) clearInterval(activeAlarmInterval);
       activeAlarmInterval = window.setInterval(() => {
-        playBeepPattern();
-      }, 2000);
+        playChimePattern();
+      }, 3000);
     }
   } catch (e) {
     console.warn('Audio play error:', e);
@@ -154,7 +135,7 @@ export function stopAlarm(): void {
   }
 }
 
-export function triggerVibration(pattern: number[] = [200, 100, 200], enabled = true): void {
+export function triggerVibration(pattern: number[] = [150, 100, 150], enabled = true): void {
   if (!enabled || typeof navigator === 'undefined' || !navigator.vibrate) return;
   try {
     navigator.vibrate(pattern);
