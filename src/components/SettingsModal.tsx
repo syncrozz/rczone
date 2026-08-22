@@ -151,7 +151,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 {isAdminMode && (
                   <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
                     <ShieldCheck className="w-3 h-3 text-amber-500" />
-                    Admin Mode (5313)
+                    Admin Mode Aktif
                   </span>
                 )}
               </div>
@@ -675,7 +675,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   Tetapan Sistem & Keselamatan Admin
                 </h3>
                 <p className="text-xs text-slate-600 dark:text-slate-300">
-                  Nama perniagaan, Kod PIN Admin (5313) dan pengurusan data
+                  Nama perniagaan, Kod PIN Admin dan pengurusan data
                 </p>
               </div>
 

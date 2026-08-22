@@ -169,7 +169,7 @@ export const Header: React.FC<HeaderProps> = ({
                     ? 'bg-amber-500/20 border-amber-500 text-amber-700 dark:text-amber-300 ring-1 ring-amber-500/40'
                     : 'bg-slate-100 border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'
                 }`}
-                title={isAdminMode ? 'Admin Aktif. Klik untuk Kunci.' : 'Buka Admin Mode (PIN 5313)'}
+                title={isAdminMode ? 'Admin Aktif. Klik untuk Kunci.' : 'Buka Mod Admin'}
               >
                 {isAdminMode ? (
                   <>
@@ -280,7 +280,7 @@ export const Header: React.FC<HeaderProps> = ({
                 title={
                   isAdminMode
                     ? 'Mod Admin Aktif (Kebenaran Mengubah/Memadam Dibenarkan). Klik untuk Kunci Semula.'
-                    : 'Klik untuk Buka Mod Admin (Perlu Kod PIN 5313).'
+                    : 'Klik untuk Buka Mod Admin.'
                 }
               >
                 {isAdminMode ? (

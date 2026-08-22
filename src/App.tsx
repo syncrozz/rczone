@@ -67,7 +67,7 @@ export default function App() {
   const [adminPinModalOpen, setAdminPinModalOpen] = useState<boolean>(false);
   const [pendingAdminAction, setPendingAdminAction] = useState<(() => void) | null>(null);
   const [pinModalTitle, setPinModalTitle] = useState<string>('Pengesahan Mod Admin');
-  const [pinModalDesc, setPinModalDesc] = useState<string>('Sila masukkan Kod PIN Admin (5313) untuk meneruskan tindakan ini.');
+  const [pinModalDesc, setPinModalDesc] = useState<string>('Sila masukkan Kod PIN Admin untuk meneruskan tindakan ini.');
 
   // Reference to track machine statuses to fire alarms only once on transition
   const previousStatusMap = useRef<Map<string, string>>(new Map());
@@ -412,7 +412,7 @@ export default function App() {
     (
       action?: () => void,
       customTitle: string = 'Pengesahan Mod Admin',
-      customDesc: string = 'Sila masukkan Kod PIN Admin (5313) untuk kebenaran mengubah, menambah atau memadam data.'
+      customDesc: string = 'Sila masukkan Kod PIN Admin untuk meneruskan tindakan ini.'
     ) => {
       if (isAdminMode) {
         action?.();
@@ -442,7 +442,7 @@ export default function App() {
       handleRequireAdmin(
         undefined,
         'Buka Mod Admin',
-        'Sila masukkan Kod PIN Admin (5313) untuk mengaktifkan kebenaran pentadbir.'
+        'Sila masukkan Kod PIN Admin.'
       );
     }
   }, [isAdminMode, settings.soundEnabled, handleRequireAdmin]);
@@ -451,7 +451,7 @@ export default function App() {
     handleRequireAdmin(
       () => setSettingsModalOpen(true),
       'Akses Tetapan Admin',
-      'Sila masukkan Kod PIN Admin (5313) untuk membuka tetapan sistem dan mesin.'
+      'Sila masukkan Kod PIN Admin untuk membuka tetapan sistem dan mesin.'
     );
   };
 

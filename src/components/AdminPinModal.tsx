@@ -17,7 +17,7 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
   onSuccess,
   correctPin = '5313',
   title = 'Pengesahan Mod Admin',
-  description = 'Sila masukkan Kod PIN Admin (5313) untuk meneruskan tindakan ini.',
+  description = 'Sila masukkan Kod PIN Admin untuk meneruskan tindakan ini.',
 }) => {
   const [pin, setPin] = useState<string>('');
   const [error, setError] = useState<boolean>(false);
