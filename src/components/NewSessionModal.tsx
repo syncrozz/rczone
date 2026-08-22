@@ -31,8 +31,11 @@ export const NewSessionModal: React.FC<NewSessionModalProps> = ({
   const [customerName, setCustomerName] = useState<string>('');
   const [selectedQueueItemId, setSelectedQueueItemId] = useState<string | undefined>(undefined);
 
+  const prevOpenRef = React.useRef(false);
+
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !prevOpenRef.current) {
+      // Initialize only when modal opens
       if (preselectedMachineId && availableMachines.some((m) => m.id === preselectedMachineId)) {
         setSelectedMachineId(preselectedMachineId);
       } else if (availableMachines.length > 0) {
@@ -41,24 +44,26 @@ export const NewSessionModal: React.FC<NewSessionModalProps> = ({
         setSelectedMachineId('');
       }
 
-      if (packages.length > 0) {
-        // Default to popular package or first package
-        const popular = packages.find((p) => p.isPopular) || packages[0];
-        setSelectedPackageId(popular.id);
-      }
-
       if (preselectedQueueItem) {
         setCustomerName(preselectedQueueItem.customerName);
         setSelectedQueueItemId(preselectedQueueItem.id);
         if (preselectedQueueItem.packageId && packages.some((p) => p.id === preselectedQueueItem.packageId)) {
           setSelectedPackageId(preselectedQueueItem.packageId);
+        } else if (packages.length > 0) {
+          const popular = packages.find((p) => p.isPopular) || packages[0];
+          setSelectedPackageId(popular.id);
         }
       } else {
         setCustomerName('');
         setSelectedQueueItemId(undefined);
+        if (packages.length > 0) {
+          const popular = packages.find((p) => p.isPopular) || packages[0];
+          setSelectedPackageId(popular.id);
+        }
       }
     }
-  }, [isOpen, preselectedMachineId, preselectedQueueItem, availableMachines, packages]);
+    prevOpenRef.current = isOpen;
+  }, [isOpen, preselectedMachineId, preselectedQueueItem]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -198,7 +203,7 @@ export const NewSessionModal: React.FC<NewSessionModalProps> = ({
                 <span>Tiada pakej masa didaftarkan. Sila daftarkan pakej di menu Tetapan terlebih dahulu.</span>
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-3 gap-2.5 pt-1.5">
                 {packages.map((pkg) => {
                   const isSelected = selectedPackageId === pkg.id;
                   return (
@@ -212,21 +217,27 @@ export const NewSessionModal: React.FC<NewSessionModalProps> = ({
                       }}
                       className={`p-3.5 rounded-2xl border-2 text-center transition-all relative flex flex-col items-center justify-between cursor-pointer ${
                         isSelected
-                          ? 'border-amber-500 bg-amber-50 dark:bg-amber-500/10 ring-2 ring-amber-500/20'
-                          : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900'
+                          ? 'border-amber-500 bg-amber-50/90 dark:bg-amber-950/40 ring-2 ring-amber-500/40 scale-[1.03] shadow-md shadow-amber-500/15 z-10'
+                          : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900 opacity-90 hover:opacity-100'
                       }`}
                     >
                       {pkg.isPopular && (
-                        <span className="absolute -top-2.5 bg-amber-500 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
-                          Pilihan
+                        <span className="absolute -top-2.5 bg-amber-500 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
+                          ★ POPULAR
                         </span>
                       )}
-                      <span className="font-extrabold text-sm text-slate-900 dark:text-white mt-0.5">
+                      <span className={`font-extrabold text-sm mt-0.5 ${isSelected ? 'text-amber-950 dark:text-amber-200' : 'text-slate-900 dark:text-white'}`}>
                         {pkg.name}
                       </span>
-                      <span className="text-base font-black text-amber-800 dark:text-amber-300 mt-1">
+                      <span className={`text-base font-black mt-1 ${isSelected ? 'text-amber-600 dark:text-amber-400' : 'text-slate-700 dark:text-slate-300'}`}>
                         {settings.currencySymbol}{pkg.price}
                       </span>
+                      {isSelected && (
+                        <div className="mt-1.5 flex items-center gap-1 text-[10px] font-black text-amber-700 dark:text-amber-300 uppercase tracking-tight">
+                          <Check className="w-3 h-3 stroke-[3]" />
+                          <span>Dipilih</span>
+                        </div>
+                      )}
                     </button>
                   );
                 })}

@@ -482,7 +482,10 @@ export default function App() {
     setSettings(DEFAULT_SETTINGS);
   };
 
-  const availableMachines = machines.filter((m) => m.status === 'READY');
+  const availableMachines = useMemo(
+    () => machines.filter((m) => m.status === 'READY'),
+    [machines]
+  );
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950">
