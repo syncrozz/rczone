@@ -31,6 +31,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   wakeLockEnabled: true,
   businessName: 'RC FUN RIDE',
   currencySymbol: 'RM',
+  adminPin: '5313',
 };
 
 export function loadInitialData(): {

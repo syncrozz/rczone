@@ -3,7 +3,6 @@ import {
   Volume2, 
   VolumeX, 
   Sun, 
-  Moon,
   Users, 
   Receipt, 
   Settings, 
@@ -15,7 +14,9 @@ import {
   CheckCircle2,
   Clock,
   Sparkles,
-  ShieldCheck
+  ShieldCheck,
+  Lock,
+  Unlock
 } from 'lucide-react';
 import { AppSettings, Machine, Session, QueueItem } from '../types';
 import { deriveMachineStatus } from '../utils/format';
@@ -34,6 +35,8 @@ interface HeaderProps {
   onOpenSettings: () => void;
   wakeLockActive: boolean;
   onToggleWakeLock: () => void;
+  isAdminMode: boolean;
+  onToggleAdminMode: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -49,6 +52,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenSettings,
   wakeLockActive,
   onToggleWakeLock,
+  isAdminMode,
+  onToggleAdminMode,
 }) => {
   const [timeString, setTimeString] = useState<string>('');
   const [dateString, setDateString] = useState<string>('');
@@ -151,6 +156,21 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Mobile Actions Shortcut (Visible on screens < lg) */}
             <div className="flex items-center gap-1.5 lg:hidden">
+              {/* Mobile Admin Lock/Unlock Toggle */}
+              <button
+                type="button"
+                id="btn-mobile-admin-lock"
+                onClick={onToggleAdminMode}
+                className={`p-2.5 rounded-xl border transition-all active:scale-95 ${
+                  isAdminMode
+                    ? 'bg-amber-500/15 border-amber-400/40 text-amber-600 dark:text-amber-400'
+                    : 'bg-slate-100 border-slate-200 text-slate-500 dark:bg-slate-800 dark:border-slate-700'
+                }`}
+                title={isAdminMode ? 'Mod Admin Aktif (Ketik untuk Kunci)' : 'Kunci Mod Staf (Ketik untuk buka PIN 5313)'}
+              >
+                {isAdminMode ? <Unlock className="w-4 h-4 text-amber-500" /> : <Lock className="w-4 h-4" />}
+              </button>
+
               <button
                 type="button"
                 id="btn-mobile-sound-toggle"
@@ -234,6 +254,36 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Desktop Action Buttons Toolbar */}
             <div className="flex items-center gap-1.5 sm:gap-2">
               
+              {/* Admin Mode Switch Button */}
+              <button
+                type="button"
+                id="btn-header-admin-lock"
+                onClick={onToggleAdminMode}
+                className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-2xs ${
+                  isAdminMode
+                    ? 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/40 text-amber-700 dark:text-amber-300 ring-1 ring-amber-500/20'
+                    : 'bg-slate-100/90 hover:bg-slate-200 dark:bg-slate-800/90 dark:hover:bg-slate-700 border-slate-200/80 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                }`}
+                title={
+                  isAdminMode
+                    ? 'Mod Admin Aktif (Kebenaran Mengubah/Memadam Dibenarkan). Klik untuk kunci.'
+                    : 'Mod Staf (Terkunci). Klik untuk masukkan PIN Admin 5313.'
+                }
+              >
+                {isAdminMode ? (
+                  <>
+                    <Unlock className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+                    <span className="hidden xl:inline font-black">Admin ON</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-3.5 h-3.5 text-slate-400" />
+                    <span className="hidden xl:inline">Staf</span>
+                  </>
+                )}
+              </button>
+
               {/* Queue Button */}
               <button
                 type="button"
@@ -320,8 +370,12 @@ export const Header: React.FC<HeaderProps> = ({
                   playTapSound(settings.soundEnabled);
                   onOpenSettings();
                 }}
-                className="p-2.5 rounded-xl bg-slate-100/90 hover:bg-slate-200 dark:bg-slate-800/90 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all active:scale-95 cursor-pointer shadow-2xs"
-                title="Tetapan Mesin & Sistem"
+                className={`p-2.5 rounded-xl border transition-all active:scale-95 cursor-pointer shadow-2xs ${
+                  isAdminMode 
+                    ? 'bg-amber-500/10 border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20'
+                    : 'bg-slate-100/90 hover:bg-slate-200 dark:bg-slate-800/90 dark:hover:bg-slate-700 border-slate-200/80 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                }`}
+                title="Tetapan Mesin & Sistem (Perlukan Admin PIN)"
               >
                 <Settings className="w-4 h-4 hover:rotate-45 transition-transform duration-300" />
               </button>

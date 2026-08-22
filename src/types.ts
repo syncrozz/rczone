@@ -73,4 +73,5 @@ export interface AppSettings {
   wakeLockEnabled: boolean;
   businessName: string;
   currencySymbol: string;
+  adminPin?: string; // Default '5313'
 }

@@ -13,6 +13,7 @@ interface QueueDrawerProps {
   onAddToQueue: (item: Omit<QueueItem, 'id' | 'createdAt'>) => void;
   onRemoveFromQueue: (id: string) => void;
   onStartFromQueue: (queueItem: QueueItem) => void;
+  onRequireAdmin?: (callback: () => void) => void;
 }
 
 export const QueueDrawer: React.FC<QueueDrawerProps> = ({
@@ -25,6 +26,7 @@ export const QueueDrawer: React.FC<QueueDrawerProps> = ({
   onAddToQueue,
   onRemoveFromQueue,
   onStartFromQueue,
+  onRequireAdmin,
 }) => {
   const [customerName, setCustomerName] = useState('');
   const [preferredMachineType, setPreferredMachineType] = useState<string>('any');
@@ -266,9 +268,13 @@ export const QueueDrawer: React.FC<QueueDrawerProps> = ({
                         type="button"
                         onClick={() => {
                           playTapSound(settings.soundEnabled);
-                          onRemoveFromQueue(item.id);
+                          if (onRequireAdmin) {
+                            onRequireAdmin(() => onRemoveFromQueue(item.id));
+                          } else {
+                            onRemoveFromQueue(item.id);
+                          }
                         }}
-                        className="p-1.5 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
                         title="Padam dari giliran"
                       >
                         <Trash2 className="w-4 h-4" />

@@ -7,6 +7,7 @@ import { QuickExtendModal } from './components/QuickExtendModal';
 import { QueueDrawer } from './components/QueueDrawer';
 import { TransactionsDrawer } from './components/TransactionsDrawer';
 import { SettingsModal } from './components/SettingsModal';
+import { AdminPinModal } from './components/AdminPinModal';
 import { Machine, RidePackage, Session, TransactionRecord, QueueItem, AppSettings } from './types';
 import {
   loadInitialData,
@@ -60,6 +61,13 @@ export default function App() {
   const [queueDrawerOpen, setQueueDrawerOpen] = useState(false);
   const [transactionsDrawerOpen, setTransactionsDrawerOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+
+  // Admin Mode state (Protected by PIN 5313)
+  const [isAdminMode, setIsAdminMode] = useState<boolean>(false);
+  const [adminPinModalOpen, setAdminPinModalOpen] = useState<boolean>(false);
+  const [pendingAdminAction, setPendingAdminAction] = useState<(() => void) | null>(null);
+  const [pinModalTitle, setPinModalTitle] = useState<string>('Pengesahan Mod Admin');
+  const [pinModalDesc, setPinModalDesc] = useState<string>('Sila masukkan Kod PIN Admin (5313) untuk meneruskan tindakan ini.');
 
   // Reference to track machine statuses to fire alarms only once on transition
   const previousStatusMap = useRef<Map<string, string>>(new Map());
@@ -399,6 +407,70 @@ export default function App() {
     updatePackagesState(packages.filter((p) => p.id !== id));
   };
 
+  // Admin Protected Action Interceptor
+  const handleRequireAdmin = useCallback(
+    (
+      action?: () => void,
+      customTitle: string = 'Pengesahan Mod Admin',
+      customDesc: string = 'Sila masukkan Kod PIN Admin (5313) untuk kebenaran mengubah, menambah atau memadam data.'
+    ) => {
+      if (isAdminMode) {
+        action?.();
+      } else {
+        setPendingAdminAction(() => action || null);
+        setPinModalTitle(customTitle);
+        setPinModalDesc(customDesc);
+        setAdminPinModalOpen(true);
+      }
+    },
+    [isAdminMode]
+  );
+
+  const handleAdminPinSuccess = useCallback(() => {
+    setIsAdminMode(true);
+    if (pendingAdminAction) {
+      pendingAdminAction();
+      setPendingAdminAction(null);
+    }
+  }, [pendingAdminAction]);
+
+  const handleToggleAdminMode = useCallback(() => {
+    if (isAdminMode) {
+      playTapSound(settings.soundEnabled);
+      setIsAdminMode(false);
+    } else {
+      handleRequireAdmin(
+        undefined,
+        'Buka Mod Admin',
+        'Sila masukkan Kod PIN Admin (5313) untuk mengaktifkan kebenaran pentadbir.'
+      );
+    }
+  }, [isAdminMode, settings.soundEnabled, handleRequireAdmin]);
+
+  const handleOpenSettingsWithAdmin = () => {
+    handleRequireAdmin(
+      () => setSettingsModalOpen(true),
+      'Akses Tetapan Admin',
+      'Sila masukkan Kod PIN Admin (5313) untuk membuka tetapan sistem dan mesin.'
+    );
+  };
+
+  const handleCancelSessionProtected = (session: Session) => {
+    handleRequireAdmin(
+      () => handleCancelSession(session),
+      'Batalkan Sesi',
+      'Pengesahan PIN Admin diperlukan untuk membatalkan sesi pelanggan ini.'
+    );
+  };
+
+  const handleToggleMaintenanceProtected = (machine: Machine) => {
+    handleRequireAdmin(
+      () => handleToggleMaintenance(machine),
+      'Mod Penyelenggaraan',
+      'Pengesahan PIN Admin diperlukan untuk menukar status mesin.'
+    );
+  };
+
   // Factory Reset
   const handleResetFactory = () => {
     resetToFactoryDefaults();
@@ -429,9 +501,11 @@ export default function App() {
         }}
         onOpenQueue={() => setQueueDrawerOpen(true)}
         onOpenTransactions={() => setTransactionsDrawerOpen(true)}
-        onOpenSettings={() => setSettingsModalOpen(true)}
+        onOpenSettings={handleOpenSettingsWithAdmin}
         wakeLockActive={wakeLockState}
         onToggleWakeLock={handleToggleWakeLock}
+        isAdminMode={isAdminMode}
+        onToggleAdminMode={handleToggleAdminMode}
       />
 
       {/* Main Control Board View */}
@@ -455,9 +529,9 @@ export default function App() {
           setActiveExtendingSession(session);
           setExtendModalOpen(true);
         }}
-        onCancelSession={handleCancelSession}
-        onToggleMaintenance={handleToggleMaintenance}
-        onOpenSettings={() => setSettingsModalOpen(true)}
+        onCancelSession={handleCancelSessionProtected}
+        onToggleMaintenance={handleToggleMaintenanceProtected}
+        onOpenSettings={handleOpenSettingsWithAdmin}
         onOpenQueue={() => setQueueDrawerOpen(true)}
         onOpenTransactions={() => setTransactionsDrawerOpen(true)}
         onStartFromQueue={handleStartFromQueue}
@@ -517,6 +591,7 @@ export default function App() {
         onAddToQueue={handleAddToQueue}
         onRemoveFromQueue={handleRemoveFromQueue}
         onStartFromQueue={handleStartFromQueue}
+        onRequireAdmin={handleRequireAdmin}
       />
 
       {/* 5. Drawer Rekod Transaksi */}
@@ -526,6 +601,7 @@ export default function App() {
         transactions={transactions}
         settings={settings}
         onClearTransactions={() => updateTransactionsState([])}
+        onRequireAdmin={handleRequireAdmin}
       />
 
       {/* 6. Modal Tetapan & Mesin */}
@@ -542,6 +618,22 @@ export default function App() {
         onAddPackage={handleAddPackage}
         onDeletePackage={handleDeletePackage}
         onResetFactory={handleResetFactory}
+        isAdminMode={isAdminMode}
+        onLockAdmin={() => setIsAdminMode(false)}
+      />
+
+      {/* 7. Modal Pengesahan PIN Admin (5313) */}
+      <AdminPinModal
+        isOpen={adminPinModalOpen}
+        onClose={() => {
+          setAdminPinModalOpen(false);
+          setPendingAdminAction(null);
+        }}
+        onSuccess={handleAdminPinSuccess}
+        correctPin={settings.adminPin || '5313'}
+        soundEnabled={settings.soundEnabled}
+        title={pinModalTitle}
+        description={pinModalDesc}
       />
     </div>
   );

@@ -10,6 +10,7 @@ interface TransactionsDrawerProps {
   transactions: TransactionRecord[];
   settings: AppSettings;
   onClearTransactions: () => void;
+  onRequireAdmin?: (callback: () => void) => void;
 }
 
 export const TransactionsDrawer: React.FC<TransactionsDrawerProps> = ({
@@ -18,6 +19,7 @@ export const TransactionsDrawer: React.FC<TransactionsDrawerProps> = ({
   transactions,
   settings,
   onClearTransactions,
+  onRequireAdmin,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -218,8 +220,14 @@ export const TransactionsDrawer: React.FC<TransactionsDrawerProps> = ({
             {!showClearConfirm ? (
               <button
                 type="button"
-                onClick={() => setShowClearConfirm(true)}
-                className="text-xs text-red-700 dark:text-red-300 hover:underline flex items-center gap-1 font-semibold"
+                onClick={() => {
+                  if (onRequireAdmin) {
+                    onRequireAdmin(() => setShowClearConfirm(true));
+                  } else {
+                    setShowClearConfirm(true);
+                  }
+                }}
+                className="text-xs text-red-700 dark:text-red-300 hover:underline flex items-center gap-1 font-semibold cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Padam Semua Rekod</span>
