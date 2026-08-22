@@ -1,0 +1,6 @@
+{
+  "name": "RC Fun Ride Manager",
+  "description": "Control Board and session timer manager for RC Fun Ride machines",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
