@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Header } from './components/Header';
 import { ControlBoard } from './components/ControlBoard';
 import { NewSessionModal } from './components/NewSessionModal';
