@@ -66,8 +66,8 @@ export default function App() {
   const [isAdminMode, setIsAdminMode] = useState<boolean>(false);
   const [adminPinModalOpen, setAdminPinModalOpen] = useState<boolean>(false);
   const [pendingAdminAction, setPendingAdminAction] = useState<(() => void) | null>(null);
-  const [pinModalTitle, setPinModalTitle] = useState<string>('Pengesahan Mod Admin');
-  const [pinModalDesc, setPinModalDesc] = useState<string>('Sila masukkan Kod PIN Admin untuk meneruskan tindakan ini.');
+  const [pinModalTitle, setPinModalTitle] = useState<string>('Akses Mod Admin');
+  const [pinModalDesc, setPinModalDesc] = useState<string>('Sila masukkan 4-digit PIN keselamatan untuk aktifkan mod suntingan admin.');
 
   // Reference to track machine statuses to fire alarms only once on transition
   const previousStatusMap = useRef<Map<string, string>>(new Map());
@@ -411,8 +411,8 @@ export default function App() {
   const handleRequireAdmin = useCallback(
     (
       action?: () => void,
-      customTitle: string = 'Pengesahan Mod Admin',
-      customDesc: string = 'Sila masukkan Kod PIN Admin untuk meneruskan tindakan ini.'
+      customTitle: string = 'Akses Mod Admin',
+      customDesc: string = 'Sila masukkan 4-digit PIN keselamatan untuk aktifkan mod suntingan admin.'
     ) => {
       if (isAdminMode) {
         action?.();
@@ -441,8 +441,8 @@ export default function App() {
     } else {
       handleRequireAdmin(
         undefined,
-        'Buka Mod Admin',
-        'Sila masukkan Kod PIN Admin.'
+        'Akses Mod Admin',
+        'Sila masukkan 4-digit PIN keselamatan untuk aktifkan mod suntingan admin.'
       );
     }
   }, [isAdminMode, settings.soundEnabled, handleRequireAdmin]);

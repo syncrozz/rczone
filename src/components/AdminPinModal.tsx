@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Lock, ShieldCheck, X, Delete, AlertCircle } from 'lucide-react';
+import { Lock, ShieldCheck, X, AlertCircle, KeyRound } from 'lucide-react';
 
 interface AdminPinModalProps {
   isOpen: boolean;
@@ -16,8 +16,8 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
   onClose,
   onSuccess,
   correctPin = '5313',
-  title = 'Pengesahan Mod Admin',
-  description = 'Sila masukkan Kod PIN Admin untuk meneruskan tindakan ini.',
+  title = 'Akses Mod Admin',
+  description = 'Sila masukkan 4-digit PIN keselamatan untuk aktifkan mod suntingan admin.',
 }) => {
   const [pin, setPin] = useState<string>('');
   const [error, setError] = useState<boolean>(false);
@@ -25,20 +25,26 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Reset state when modal opens
+  // Auto-focus immediately whenever modal opens
   useEffect(() => {
     if (isOpen) {
       setPin('');
       setError(false);
       setIsShaking(false);
       setIsSuccess(false);
-      // Focus invisible input for physical keyboard entry
-      setTimeout(() => {
+
+      // Instant focus + delayed fallback for smooth rendering
+      inputRef.current?.focus();
+      const timer = setTimeout(() => {
         inputRef.current?.focus();
-      }, 100);
+        inputRef.current?.select();
+      }, 50);
+
+      return () => clearTimeout(timer);
     }
   }, [isOpen]);
 
+  // Unified PIN verification function
   const verifyPin = (inputPin: string) => {
     if (inputPin === correctPin) {
       setIsSuccess(true);
@@ -46,188 +52,140 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
       setTimeout(() => {
         onSuccess();
         onClose();
-      }, 300);
+      }, 200);
     } else {
       setError(true);
       setIsShaking(true);
+      setPin('');
       setTimeout(() => {
         setIsShaking(false);
-        setPin('');
-      }, 600);
+        inputRef.current?.focus();
+      }, 500);
     }
   };
 
-  const handleKeyPress = (digit: string) => {
-    if (isSuccess) return;
-    if (pin.length < 4) {
-      const nextPin = pin + digit;
-      setPin(nextPin);
-      setError(false);
-      if (nextPin.length === 4) {
-        verifyPin(nextPin);
-      }
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pin || pin.length === 0) {
+      inputRef.current?.focus();
+      return;
     }
+    verifyPin(pin);
   };
 
-  const handleDelete = () => {
-    if (isSuccess) return;
-    setPin((prev) => prev.slice(0, -1));
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawVal = e.target.value.replace(/\D/g, '').slice(0, 4);
+    setPin(rawVal);
     setError(false);
   };
 
-  const handleClear = () => {
-    if (isSuccess) return;
-    setPin('');
-    setError(false);
-  };
-
-  // Physical keyboard support
+  // Keyboard Escape listener
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
-      } else if (e.key >= '0' && e.key <= '9') {
-        handleKeyPress(e.key);
-      } else if (e.key === 'Backspace') {
-        handleDelete();
-      } else if (e.key === 'Delete') {
-        handleClear();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, pin, isSuccess, correctPin]);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200">
       <div
-        className={`bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden flex flex-col p-6 sm:p-7 relative transition-transform ${
-          isShaking ? 'animate-bounce border-rose-500 ring-2 ring-rose-500/30' : 'animate-in zoom-in-95 duration-150'
+        className={`bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden flex flex-col p-6 sm:p-7 relative transition-all ${
+          isShaking
+            ? 'animate-bounce border-rose-500 ring-2 ring-rose-500/30'
+            : 'animate-in zoom-in-95 duration-150'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Invisible input to catch keyboard focus on mobile/desktop */}
-        <input
-          ref={inputRef}
-          type="tel"
-          pattern="[0-9]*"
-          inputMode="numeric"
-          value={pin}
-          onChange={() => {}}
-          className="opacity-0 absolute pointer-events-none w-0 h-0"
-          autoFocus
-        />
-
         {/* Close Button */}
         <button
           type="button"
           onClick={onClose}
           className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-          title="Tutup"
+          title="Tutup (Esc)"
         >
           <X className="w-5 h-5" />
         </button>
 
-        {/* Icon & Title */}
+        {/* 🔒 Icon & Title */}
         <div className="text-center space-y-2 mb-6">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-white dark:bg-slate-800 p-1.5 shadow-lg shadow-amber-500/20 ring-2 ring-amber-500/30 flex items-center justify-center overflow-hidden">
-            <img 
-              src="https://raw.githubusercontent.com/syncrozz/syncrozz-assets/main/logo/RC%20Zone/android-chrome-192x192.png" 
-              alt="RC Zone" 
-              className="w-full h-full object-contain"
-            />
+          <div className="mx-auto w-14 h-14 rounded-2xl bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center justify-center shadow-xs">
+            {isSuccess ? (
+              <ShieldCheck className="w-7 h-7 text-emerald-500 animate-pulse" />
+            ) : (
+              <Lock className="w-7 h-7 text-amber-500" />
+            )}
           </div>
 
           <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
             {title}
           </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">
             {description}
           </p>
         </div>
 
-        {/* PIN Digit Indicators */}
-        <div className="flex items-center justify-center gap-3.5 mb-6">
-          {[0, 1, 2, 3].map((index) => {
-            const isFilled = pin.length > index;
-            return (
-              <div
-                key={index}
-                className={`w-11 h-12 rounded-2xl flex items-center justify-center font-mono font-black text-xl transition-all duration-200 ${
-                  isSuccess
-                    ? 'bg-emerald-500 text-white border-2 border-emerald-400 shadow-md shadow-emerald-500/30 scale-105'
-                    : error
-                    ? 'bg-rose-50 dark:bg-rose-950/40 border-2 border-rose-500 text-rose-600 dark:text-rose-400'
-                    : isFilled
-                    ? 'bg-blue-50 dark:bg-blue-950/50 border-2 border-blue-500 text-blue-600 dark:text-blue-400 shadow-sm scale-105'
-                    : 'bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-400'
+        {/* Form with PIN Input & Submit Button */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <div className="relative">
+              <input
+                ref={inputRef}
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={4}
+                autoComplete="off"
+                placeholder="Masukkan 4-digit PIN"
+                value={pin}
+                onChange={handleInputChange}
+                className={`w-full px-4 py-3.5 rounded-2xl border-2 bg-slate-50 dark:bg-slate-950 font-mono font-black text-center text-xl tracking-[0.3em] transition-all placeholder:font-sans placeholder:text-sm placeholder:font-normal placeholder:tracking-normal outline-hidden ${
+                  error
+                    ? 'border-rose-500 text-rose-600 dark:text-rose-400 bg-rose-50/50 dark:bg-rose-950/30 ring-2 ring-rose-500/20'
+                    : isSuccess
+                    ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30'
+                    : 'border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:border-amber-500 dark:focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20'
                 }`}
-              >
-                {isFilled ? '●' : ''}
+                autoFocus
+              />
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-rose-600 dark:text-rose-400 animate-in fade-in duration-150">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>PIN Tidak Sah! Sila cuba lagi.</span>
               </div>
-            );
-          })}
-        </div>
-
-        {/* Error Feedback */}
-        {error && (
-          <div className="mb-4 flex items-center justify-center gap-1.5 text-xs font-bold text-rose-600 dark:text-rose-400 animate-fade-in">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>PIN Tidak Sah! Sila cuba lagi.</span>
+            )}
           </div>
-        )}
 
-        {/* Numeric On-Screen Keypad */}
-        <div className="grid grid-cols-3 gap-2.5 max-w-[260px] mx-auto w-full">
-          {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
-            <button
-              key={digit}
-              type="button"
-              onClick={() => handleKeyPress(digit)}
-              className="h-12 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-200/80 dark:border-slate-700 font-mono font-black text-lg text-slate-800 dark:text-slate-100 active:scale-90 transition-all shadow-2xs cursor-pointer"
-            >
-              {digit}
-            </button>
-          ))}
-
-          {/* Clear Button */}
+          {/* 🔑 Submit Button */}
           <button
-            type="button"
-            onClick={handleClear}
-            className="h-12 rounded-2xl bg-slate-100/70 hover:bg-slate-200 dark:bg-slate-800/60 dark:hover:bg-slate-700/80 border border-slate-200/80 dark:border-slate-700 text-xs font-bold text-slate-500 dark:text-slate-400 active:scale-90 transition-all cursor-pointer"
+            type="submit"
+            disabled={isSuccess}
+            className={`w-full py-3.5 px-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-98 cursor-pointer ${
+              isSuccess
+                ? 'bg-emerald-500 text-white shadow-emerald-500/30'
+                : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 shadow-amber-500/25'
+            }`}
           >
-            CLR
+            <KeyRound className="w-4 h-4 stroke-[2.5]" />
+            <span>Sahkan PIN Admin</span>
           </button>
+        </form>
 
-          {/* Zero Button */}
-          <button
-            type="button"
-            onClick={() => handleKeyPress('0')}
-            className="h-12 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-200/80 dark:border-slate-700 font-mono font-black text-lg text-slate-800 dark:text-slate-100 active:scale-90 transition-all shadow-2xs cursor-pointer"
-          >
-            0
-          </button>
-
-          {/* Backspace Button */}
-          <button
-            type="button"
-            onClick={handleDelete}
-            className="h-12 rounded-2xl bg-slate-100/70 hover:bg-slate-200 dark:bg-slate-800/60 dark:hover:bg-slate-700/80 border border-slate-200/80 dark:border-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 active:scale-90 transition-all cursor-pointer"
-            title="Padam Digit"
-          >
-            <Delete className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Quick Hint / Cancel Footer */}
-        <div className="mt-5 text-center">
+        {/* Quick Hint */}
+        <div className="mt-4 text-center">
           <p className="text-[11px] text-slate-400 dark:text-slate-500">
-            Kebenaran khas diperlukan untuk mengubah, menambah & memadam data.
+            Tekan <kbd className="px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[10px] font-bold text-slate-600 dark:text-slate-300">Enter</kbd> untuk sahkan atau <kbd className="px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[10px] font-bold text-slate-600 dark:text-slate-300">Esc</kbd> untuk batal.
           </p>
         </div>
       </div>
