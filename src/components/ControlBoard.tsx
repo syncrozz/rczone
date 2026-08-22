@@ -444,7 +444,17 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
           <span>&bull;</span>
           <span>SES V4.3</span>
         </div>
-        <div>&copy; {new Date().getFullYear()} SYNCROZZ ENGINEERING STANDARD</div>
+        <div>
+          Develop By{' '}
+          <a
+            href="https://sites.google.com/view/khairi-innovation/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 dark:text-blue-400 hover:underline hover:text-blue-700 dark:hover:text-blue-300 transition-colors font-extrabold normal-case"
+          >
+            Syncrozz
+          </a>
+        </div>
       </footer>
 
       {/* FLOATING ACTION BAR FOR MOBILE */}
