@@ -12,6 +12,17 @@ export function formatClockTime(timestamp: number): string {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+export function formatDateFull(timestamp: number): string {
+  const date = new Date(timestamp);
+  return date.toLocaleString('ms-MY', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 export function calculateSessionTime(
   session: Session,
   nowTimestamp: number

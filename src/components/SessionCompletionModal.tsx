@@ -1,27 +1,37 @@
-import React from 'react';
-import { X, CheckCircle2, Plus, Clock, DollarSign, User, AlertCircle, Sparkles } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { 
+  X, 
+  CheckCircle2, 
+  Clock, 
+  RotateCcw, 
+  DollarSign, 
+  User, 
+  AlertTriangle,
+  Receipt,
+  Zap,
+} from 'lucide-react';
 import { Session, AppSettings } from '../types';
 import { formatClockTime } from '../utils/format';
 import { playTapSound } from '../utils/sound';
 
 interface SessionCompletionModalProps {
-  session: Session | null;
   isOpen: boolean;
+  session: Session | null;
   onClose: () => void;
   settings: AppSettings;
   onCompleteAndRecord: (session: Session) => void;
-  onExtend: (session: Session, minutes: number, price: number) => void;
+  onExtend: (session: Session, minutes: number, price?: number) => void;
 }
 
 export const SessionCompletionModal: React.FC<SessionCompletionModalProps> = ({
-  session,
   isOpen,
+  session,
   onClose,
   settings,
   onCompleteAndRecord,
   onExtend,
 }) => {
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -34,117 +44,117 @@ export const SessionCompletionModal: React.FC<SessionCompletionModalProps> = ({
 
   if (!isOpen || !session) return null;
 
+  const handleConfirm = () => {
+    playTapSound(settings.soundEnabled);
+    onCompleteAndRecord(session);
+    onClose();
+  };
+
+  const handleQuickExtend = (mins: number, price: number) => {
+    playTapSound(settings.soundEnabled);
+    onExtend(session, mins, price);
+    onClose();
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200">
-      <div
-        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div 
+        className="bg-[#101723] border border-slate-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header banner */}
-        <div className="p-5 bg-gradient-to-b from-amber-500/20 to-transparent border-b border-slate-200 dark:border-slate-800 text-center relative">
+        {/* Header */}
+        <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between bg-[#0c121c]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-[9px] font-chakra font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                SESI TAMAT
+              </span>
+              <h2 className="text-base sm:text-lg font-chakra font-black text-white tracking-wide uppercase mt-0.5">
+                Pengesahan Selesai
+              </h2>
+            </div>
+          </div>
           <button
             type="button"
             onClick={() => {
               playTapSound(settings.soundEnabled);
               onClose();
             }}
-            className="absolute top-4 right-4 p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
+            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
-
-          <div className="w-14 h-14 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-amber-500/30">
-            <CheckCircle2 className="w-8 h-8 stroke-[2.5]" />
-          </div>
-
-          <span className="text-[11px] font-black uppercase tracking-widest text-amber-800 dark:text-amber-300">
-            PENGESAHAN SESI
-          </span>
-          <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-0.5">
-            SESI SELESAI
-          </h2>
-          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
-            Pilih tindakan untuk mesin ini
-          </p>
         </div>
 
-        {/* Session Details Card */}
-        <div className="p-5 space-y-4">
-          <div className="bg-slate-50 dark:bg-slate-800/80 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-2.5">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
-              <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">Mesin</span>
-              <span className="font-extrabold text-base text-slate-900 dark:text-white">
-                {session.machineName}
-              </span>
+        {/* Content Details */}
+        <div className="p-5 sm:p-6 space-y-4 font-mono">
+          <div className="p-4 rounded-2xl bg-[#0c121c] border border-slate-800 space-y-3">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-800/80 text-xs">
+              <span className="text-slate-400 font-bold uppercase">Mesin</span>
+              <span className="text-white font-black">{session.machineName}</span>
             </div>
 
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
-              <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">Pakej & Tempoh</span>
-              <span className="font-bold text-sm text-slate-800 dark:text-slate-200">
-                {session.packageName} ({session.durationMinutes} Minit)
-              </span>
+            <div className="flex justify-between items-center pb-2 border-b border-slate-800/80 text-xs">
+              <span className="text-slate-400 font-bold uppercase">Pelanggan</span>
+              <span className="text-amber-400 font-bold">{session.customerName || 'Walk-in'}</span>
             </div>
 
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
-              <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">Pelanggan</span>
-              <span className="font-bold text-sm text-slate-800 dark:text-slate-200">
-                {session.customerName || 'Walk-in'}
-              </span>
+            <div className="flex justify-between items-center pb-2 border-b border-slate-800/80 text-xs">
+              <span className="text-slate-400 font-bold uppercase">Pakej & Tempoh</span>
+              <span className="text-slate-200 font-bold">{session.packageName} ({session.totalDurationMinutes} Minit)</span>
             </div>
 
-            <div className="flex items-center justify-between pt-1">
-              <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">Jumlah Bayaran</span>
-              <span className="font-black text-xl text-amber-800 dark:text-amber-300">
-                {settings.currencySymbol}{session.price}
-              </span>
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-slate-400 font-bold uppercase">Masa Sesi</span>
+              <span className="text-slate-300 font-bold">{formatClockTime(session.startTime)} - {formatClockTime(session.endTime)}</span>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="space-y-2.5 pt-1">
-            {/* 1. Tamatkan & Rekod */}
-            <button
-              type="button"
-              id="btn-complete-confirm"
-              onClick={() => {
-                playTapSound(settings.soundEnabled);
-                onCompleteAndRecord(session);
-                onClose();
-              }}
-              className="w-full py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25 transition-all cursor-pointer"
-            >
-              <CheckCircle2 className="w-5 h-5" />
-              <span>[ TAMATKAN & REKOD ]</span>
-            </button>
+          {/* Revenue Amount */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/40 to-[#0c121c] border border-emerald-500/30 flex justify-between items-center">
+            <div>
+              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">
+                Jumlah Kutipan Sesi
+              </span>
+              <span className="text-2xl font-black text-emerald-400">
+                {settings.currencySymbol} {session.price.toFixed(2)}
+              </span>
+            </div>
+            <Receipt className="w-6 h-6 text-emerald-400/60" />
+          </div>
 
-            {/* 2. Sambung Options */}
+          {/* Primary Action Button */}
+          <button
+            type="button"
+            onClick={handleConfirm}
+            className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-chakra font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/20 transition-all cursor-pointer active:scale-[0.98]"
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            <span>SAHKAN & SIMPAN TRANSAKSI</span>
+          </button>
+
+          {/* Or Quick Extend */}
+          <div className="pt-2">
+            <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block text-center mb-2">
+              Atau Pelanggan Mahu Tambah Masa?
+            </span>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                id="btn-extend-20-confirm"
-                onClick={() => {
-                  playTapSound(settings.soundEnabled);
-                  onExtend(session, 20, 10);
-                  onClose();
-                }}
-                className="py-3 px-3 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-800 dark:text-amber-300 border-2 border-amber-500/40 font-extrabold text-xs flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                onClick={() => handleQuickExtend(20, 10)}
+                className="py-2 px-3 rounded-xl bg-[#151f2e] hover:bg-[#1c2a3e] border border-amber-500/40 text-amber-300 font-bold text-xs uppercase transition-colors cursor-pointer"
               >
-                <Plus className="w-4 h-4" />
-                <span>SAMBUNG 20 MIN (RM10)</span>
+                +20 Minit (RM10)
               </button>
-
               <button
                 type="button"
-                id="btn-extend-30-confirm"
-                onClick={() => {
-                  playTapSound(settings.soundEnabled);
-                  onExtend(session, 30, 15);
-                  onClose();
-                }}
-                className="py-3 px-3 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-800 dark:text-amber-300 border-2 border-amber-500/40 font-extrabold text-xs flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                onClick={() => handleQuickExtend(30, 15)}
+                className="py-2 px-3 rounded-xl bg-[#151f2e] hover:bg-[#1c2a3e] border border-amber-500/40 text-amber-300 font-bold text-xs uppercase transition-colors cursor-pointer"
               >
-                <Plus className="w-4 h-4" />
-                <span>SAMBUNG 30 MIN (RM15)</span>
+                +30 Minit (RM15)
               </button>
             </div>
           </div>
