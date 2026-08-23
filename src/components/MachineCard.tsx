@@ -15,6 +15,7 @@ import {
   SlidersHorizontal,
   Activity,
   Zap,
+  QrCode,
 } from 'lucide-react';
 import { Machine, Session, MachineStatus, AppSettings } from '../types';
 import { calculateSessionTime, deriveMachineStatus, formatClockTime, formatTimeRemaining, getStatusBadgeConfig } from '../utils/format';
@@ -32,6 +33,7 @@ interface MachineCardProps {
   onOpenCustomExtend: (session: Session) => void;
   onCancelSession: (session: Session) => void;
   onToggleMaintenance: (machine: Machine) => void;
+  onOpenQrModal?: (session: Session, machine: Machine) => void;
 }
 
 export const MachineCard: React.FC<MachineCardProps> = ({
@@ -46,6 +48,7 @@ export const MachineCard: React.FC<MachineCardProps> = ({
   onOpenCustomExtend,
   onCancelSession,
   onToggleMaintenance,
+  onOpenQrModal,
 }) => {
   const currentStatus: MachineStatus = deriveMachineStatus(
     machine.status,
@@ -218,12 +221,28 @@ export const MachineCard: React.FC<MachineCardProps> = ({
 
             {/* Session Metadata Capsule */}
             <div className="px-3 py-2 rounded-xl bg-[#0e1522] border border-slate-800 flex items-center justify-between text-[11px] font-mono">
-              <span className="text-amber-400 font-bold truncate max-w-[120px]">
+              <span className="text-amber-400 font-bold truncate max-w-[110px]">
                 {session.packageName} ({settings.currencySymbol}{session.price})
               </span>
-              <span className="text-slate-200 font-semibold truncate max-w-[110px] text-right">
-                {session.customerName || 'Walk-in'}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-slate-200 font-semibold truncate max-w-[90px] text-right">
+                  {session.customerName || 'Walk-in'}
+                </span>
+                {onOpenQrModal && (
+                  <button
+                    type="button"
+                    id={`btn-open-qr-mini-${machine.id}`}
+                    onClick={() => {
+                      playTapSound(settings.soundEnabled);
+                      onOpenQrModal(session, machine);
+                    }}
+                    className="p-1 rounded-md bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 hover:border-amber-400 active:scale-95 transition-all cursor-pointer"
+                    title="Buka QR Live Tracker & WhatsApp"
+                  >
+                    <QrCode className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}

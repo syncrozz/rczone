@@ -301,18 +301,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-chakra font-black uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                  <Zap className="w-2.5 h-2.5 text-amber-400 fill-amber-400" />
-                  <span>RC ZONE MOTORSPORT</span>
-                </span>
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-mono font-bold bg-[#131b28] text-slate-300 border border-slate-700/80 tracking-wide">
-                  <Radio className="w-2.5 h-2.5 text-emerald-400 animate-pulse" />
-                  <span>TELEMETRY ONLINE</span>
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2.5 mt-1">
+              <div className="flex items-center gap-2.5">
                 <h1 className="text-2xl font-chakra font-black text-white tracking-wider uppercase">
                   {settings.businessName || 'FUN RIDE'}
                 </h1>
@@ -350,19 +339,6 @@ export const Header: React.FC<HeaderProps> = ({
                     <span>{timeUpCount} TAMAT</span>
                   </div>
                 )}
-              </div>
-
-              {/* Digital Precision Clock */}
-              <div className="flex items-center gap-2.5 px-3.5 py-1.5 bg-[#101723] rounded-2xl border border-slate-800 shadow-inner">
-                <Clock className="w-4 h-4 text-amber-400 shrink-0" />
-                <div className="flex flex-col text-left leading-tight">
-                  <span className="text-sm font-mono font-black text-white tracking-widest">
-                    {timeString || '--:--:--'}
-                  </span>
-                  <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest">
-                    {dateString}
-                  </span>
-                </div>
               </div>
 
               {/* Admin Access Motorsport Key */}
@@ -453,51 +429,22 @@ export const Header: React.FC<HeaderProps> = ({
                 )}
               </button>
 
-              <button
-                type="button"
-                id="btn-header-wakelock"
-                onClick={onToggleWakeLock}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-chakra font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer ${
-                  wakeLockActive
-                    ? 'bg-[#131b28] border-amber-400 text-amber-300'
-                    : 'bg-[#101723] border-slate-800 text-slate-400 hover:text-slate-300'
-                }`}
-                title="Kekalkan skrin sentiasa menyala"
-              >
-                <Sun className={`w-4 h-4 ${wakeLockActive ? 'text-amber-400 animate-[spin_10s_linear_infinite]' : 'text-slate-500'}`} />
-                <span className="font-mono text-[11px]">{wakeLockActive ? 'Awake' : 'Auto'}</span>
-              </button>
-
-              <button
-                type="button"
-                id="btn-header-settings"
-                onClick={() => {
-                  playTapSound(settings.soundEnabled);
-                  onOpenSettings();
-                }}
-                className={`p-2 rounded-xl border transition-all active:scale-95 cursor-pointer ${
-                  isAdminMode
-                    ? 'bg-amber-500 text-slate-950 border-amber-400 font-extrabold shadow-md shadow-amber-500/20'
-                    : 'bg-[#131b28] hover:bg-[#182334] border-slate-700/80 text-slate-300 hover:text-white hover:border-slate-600'
-                }`}
-                title="Tetapan Sistem & Mesin"
-              >
-                <Settings className="w-4 h-4" />
-              </button>
-
-              {/* Race Action Start Button */}
-              <button
-                type="button"
-                id="btn-header-new-session"
-                onClick={() => {
-                  playTapSound(settings.soundEnabled);
-                  onOpenNewSession();
-                }}
-                className="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black px-4.5 py-1.5 rounded-xl flex items-center gap-2 text-xs uppercase tracking-wider shadow-lg shadow-amber-500/25 active:scale-95 transition-all cursor-pointer"
-              >
-                <Plus className="w-4 h-4 stroke-[3]" />
-                <span>+ SESI BARU</span>
-              </button>
+              {/* Race Action Start Button (Admin Access Mode only) */}
+              {isAdminMode && (
+                <button
+                  type="button"
+                  id="btn-header-new-session"
+                  onClick={() => {
+                    playTapSound(settings.soundEnabled);
+                    onOpenNewSession();
+                  }}
+                  className="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black px-4.5 py-1.5 rounded-xl flex items-center gap-2 text-xs uppercase tracking-wider shadow-lg shadow-amber-500/25 active:scale-95 transition-all cursor-pointer animate-pulse"
+                  title="Tambah Sesi Baru (Mod Pentadbir)"
+                >
+                  <Plus className="w-4 h-4 stroke-[3]" />
+                  <span>+ SESI BARU</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

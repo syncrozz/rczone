@@ -36,6 +36,7 @@ interface ControlBoardProps {
   onOpenQueue: () => void;
   onOpenTransactions: () => void;
   onStartFromQueue: (queueItem: QueueItem) => void;
+  onOpenQrModal?: (session: Session, machine: Machine) => void;
 }
 
 export const ControlBoard: React.FC<ControlBoardProps> = ({
@@ -57,6 +58,7 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
   onOpenQueue,
   onOpenTransactions,
   onStartFromQueue,
+  onOpenQrModal,
 }) => {
   const [filter, setFilter] = useState<'ALL' | 'READY' | 'RUNNING' | 'ENDING_SOON' | 'TIME_UP' | 'MAINTENANCE'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -294,6 +296,7 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
               onOpenCustomExtend={onOpenCustomExtend}
               onCancelSession={onCancelSession}
               onToggleMaintenance={onToggleMaintenance}
+              onOpenQrModal={onOpenQrModal}
             />
           ))}
         </div>

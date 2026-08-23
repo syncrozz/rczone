@@ -25,10 +25,8 @@ interface NewSessionModalProps {
   settings: AppSettings;
   onStart: (
     machineId: string,
-    packageName: string,
-    durationMinutes: number,
-    price: number,
-    customerName: string,
+    packageId: string,
+    customerName?: string,
     queueItemId?: string
   ) => void;
 }
@@ -101,9 +99,7 @@ export const NewSessionModal: React.FC<NewSessionModalProps> = ({
     playTapSound(settings.soundEnabled);
     onStart(
       selectedMachineId,
-      selectedPkg.name,
-      selectedPkg.durationMinutes,
-      selectedPkg.price,
+      selectedPkg.id,
       customerName.trim() || 'Walk-in',
       selectedQueueId || undefined
     );

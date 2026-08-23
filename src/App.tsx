@@ -9,6 +9,8 @@ import { TransactionsDrawer } from './components/TransactionsDrawer';
 import { SettingsModal } from './components/SettingsModal';
 import { AdminPinModal } from './components/AdminPinModal';
 import { OfflineBanner } from './components/OfflineBanner';
+import { SessionQrModal } from './components/SessionQrModal';
+import { CustomerLiveView } from './components/CustomerLiveView';
 import { Machine, RidePackage, Session, TransactionRecord, QueueItem, AppSettings } from './types';
 import {
   loadInitialData,
@@ -49,10 +51,22 @@ export default function App() {
   const [nowTimestamp, setNowTimestamp] = useState<number>(Date.now());
   const [wakeLockState, setWakeLockState] = useState<boolean>(false);
 
+  // Customer Live View state
+  const [isCustomerView, setIsCustomerView] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('view') === 'customer';
+  });
+
   // Modal dialog states
   const [newSessionOpen, setNewSessionOpen] = useState(false);
   const [preselectedMachineId, setPreselectedMachineId] = useState<string | undefined>(undefined);
   const [preselectedQueueItem, setPreselectedQueueItem] = useState<QueueItem | undefined>(undefined);
+
+  // QR Live Tracker Modal
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [activeQrSession, setActiveQrSession] = useState<Session | null>(null);
+  const [activeQrMachine, setActiveQrMachine] = useState<Machine | null>(null);
 
   const [completionModalOpen, setCompletionModalOpen] = useState(false);
   const [activeCompletingSession, setActiveCompletingSession] = useState<Session | null>(null);
@@ -205,7 +219,7 @@ export default function App() {
     queueItemId?: string
   ) => {
     const targetMachine = machines.find((m) => m.id === machineId);
-    const targetPackage = packages.find((p) => p.id === packageId);
+    const targetPackage = packages.find((p) => p.id === packageId || p.name === packageId) || packages[0];
     if (!targetMachine || !targetPackage) return;
 
     const startTime = Date.now();
@@ -247,6 +261,17 @@ export default function App() {
     }
 
     playSessionStartSound(settings.soundEnabled);
+
+    // Auto open QR Live Tracker Modal for customer WhatsApp share or scan
+    setActiveQrSession(newSession);
+    setActiveQrMachine(targetMachine);
+    setQrModalOpen(true);
+  };
+
+  const handleOpenQrModal = (session: Session, machine: Machine) => {
+    setActiveQrSession(session);
+    setActiveQrMachine(machine);
+    setQrModalOpen(true);
   };
 
   const handlePauseResumeSession = (session: Session) => {
@@ -510,6 +535,19 @@ export default function App() {
     [machines]
   );
 
+  // If page was loaded via QR Code or WhatsApp Live link by the customer:
+  if (isCustomerView) {
+    return (
+      <CustomerLiveView
+        onBackToDashboard={() => {
+          setIsCustomerView(false);
+          const cleanUrl = window.location.pathname;
+          window.history.replaceState({}, document.title, cleanUrl);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#0b0f17] text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950 bg-carbon">
       {/* Top Application Header */}
@@ -561,6 +599,7 @@ export default function App() {
         onOpenQueue={() => setQueueDrawerOpen(true)}
         onOpenTransactions={() => setTransactionsDrawerOpen(true)}
         onStartFromQueue={handleStartFromQueue}
+        onOpenQrModal={handleOpenQrModal}
       />
 
       {/* 1. Modal Sesi Baru */}
@@ -662,7 +701,20 @@ export default function App() {
         description={pinModalDesc}
       />
 
-      {/* 8. PWA Offline Status Toast Indicator */}
+      {/* 8. Modal QR Live Tracker & WhatsApp Sesi */}
+      <SessionQrModal
+        isOpen={qrModalOpen}
+        onClose={() => {
+          setQrModalOpen(false);
+          setActiveQrSession(null);
+          setActiveQrMachine(null);
+        }}
+        session={activeQrSession}
+        machine={activeQrMachine}
+        settings={settings}
+      />
+
+      {/* 9. PWA Offline Status Toast Indicator */}
       <OfflineBanner />
     </div>
   );
