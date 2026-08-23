@@ -1,32 +1,46 @@
 /**
- * Service Worker Registration for PWA
+ * Robust Service Worker Registration for PWA
  */
 export function registerServiceWorker() {
-  if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker
-        .register('/sw.js', { scope: '/' })
-        .then((registration) => {
-          console.log('[PWA] Service Worker registered with scope:', registration.scope);
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+    return;
+  }
 
-          registration.onupdatefound = () => {
-            const installingWorker = registration.installing;
-            if (!installingWorker) return;
+  const register = () => {
+    navigator.serviceWorker
+      .register('/sw.js', { scope: '/' })
+      .then((registration) => {
+        console.log('[PWA] Service Worker registered successfully with scope:', registration.scope);
 
-            installingWorker.onstatechange = () => {
-              if (installingWorker.state === 'installed') {
-                if (navigator.serviceWorker.controller) {
-                  console.log('[PWA] New version available; will activate on reload.');
-                } else {
-                  console.log('[PWA] App ready for offline usage.');
-                }
+        // Check for updates periodically
+        setInterval(() => {
+          registration.update().catch((err) => console.debug('[PWA] Auto update check:', err));
+        }, 60 * 60 * 1000); // every 1 hour
+
+        registration.onupdatefound = () => {
+          const installingWorker = registration.installing;
+          if (!installingWorker) return;
+
+          installingWorker.onstatechange = () => {
+            if (installingWorker.state === 'installed') {
+              if (navigator.serviceWorker.controller) {
+                console.log('[PWA] New version available; will activate on reload.');
+              } else {
+                console.log('[PWA] App is ready for offline usage.');
               }
-            };
+            }
           };
-        })
-        .catch((error) => {
-          console.warn('[PWA] Service Worker registration failed:', error);
-        });
-    });
+        };
+      })
+      .catch((error) => {
+        console.warn('[PWA] Service Worker registration failed:', error);
+      });
+  };
+
+  if (document.readyState === 'complete') {
+    register();
+  } else {
+    window.addEventListener('load', register);
   }
 }
+

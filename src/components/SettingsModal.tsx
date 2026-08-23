@@ -19,6 +19,9 @@ import {
   ShieldCheck,
   KeyRound,
   Zap,
+  Download,
+  Smartphone,
+  CheckCircle2,
 } from 'lucide-react';
 import { Machine, RidePackage, AppSettings, MachineType } from '../types';
 import { playTapSound, playTimeUpAlarm, playEndingSoonSound } from '../utils/sound';
@@ -721,6 +724,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </span>
                   )}
                 </form>
+              </div>
+
+              {/* PWA & Mobile Web App Capabilities Status */}
+              <div className="p-4 rounded-2xl bg-[#0c121c] border border-emerald-500/30 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center">
+                      <Smartphone className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="font-black text-xs text-white uppercase">
+                          Progressive Web App (PWA)
+                        </h4>
+                        <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                          AKTIF
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-400">
+                        Service Worker, Cache Luar Talian, &amp; Mod Skrin Penuh sedia digunakan.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-[11px] text-slate-300 bg-[#131b28] p-2.5 rounded-xl border border-slate-800 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>
+                    Boleh dipasang terus pada Android, iPhone, iPad, atau Komputer sebagai aplikasi berasingan.
+                  </span>
+                </div>
               </div>
 
               {/* SES 4.3 Data Integrity & Factory Reset */}

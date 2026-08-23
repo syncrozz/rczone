@@ -9,6 +9,7 @@ import { TransactionsDrawer } from './components/TransactionsDrawer';
 import { SettingsModal } from './components/SettingsModal';
 import { AdminPinModal } from './components/AdminPinModal';
 import { OfflineBanner } from './components/OfflineBanner';
+import { PwaInstallPrompt } from './components/PwaInstallPrompt';
 import { SessionQrModal } from './components/SessionQrModal';
 import { CustomerLiveView } from './components/CustomerLiveView';
 import { Machine, RidePackage, Session, TransactionRecord, QueueItem, AppSettings } from './types';
@@ -25,6 +26,11 @@ import {
   DEFAULT_PACKAGES,
   DEFAULT_SETTINGS,
 } from './utils/storage';
+import {
+  subscribeToCloudSync,
+  pushCloudUpdate,
+  CloudSystemState,
+} from './services/firebaseSync';
 import {
   playTapSound,
   playSessionStartSound,
@@ -144,7 +150,39 @@ export default function App() {
     }
   }, [settings.wakeLockEnabled]);
 
-  // 4. PWA Shortcuts & URL Query Actions Handler
+  // 4. Realtime Cross-Device Firebase Cloud Sync
+  useEffect(() => {
+    const unsubscribe = subscribeToCloudSync((cloudData) => {
+      if (cloudData.machines !== undefined) {
+        setMachines(cloudData.machines);
+        saveMachines(cloudData.machines);
+      }
+      if (cloudData.packages !== undefined) {
+        setPackages(cloudData.packages);
+        savePackages(cloudData.packages);
+      }
+      if (cloudData.sessions !== undefined) {
+        setSessions(cloudData.sessions);
+        saveSessions(cloudData.sessions);
+      }
+      if (cloudData.transactions !== undefined) {
+        setTransactions(cloudData.transactions);
+        saveTransactions(cloudData.transactions);
+      }
+      if (cloudData.queue !== undefined) {
+        setQueue(cloudData.queue);
+        saveQueue(cloudData.queue);
+      }
+      if (cloudData.settings !== undefined) {
+        setSettings((prev) => ({ ...prev, ...cloudData.settings }));
+        saveSettings({ ...settings, ...cloudData.settings });
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // 5. PWA Shortcuts & URL Query Actions Handler
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const urlParams = new URLSearchParams(window.location.search);
@@ -172,6 +210,7 @@ export default function App() {
       setSettings((prev) => {
         const next = { ...prev, wakeLockEnabled: false };
         saveSettings(next);
+        pushCloudUpdate({ settings: next });
         return next;
       });
     } else {
@@ -180,35 +219,41 @@ export default function App() {
       setSettings((prev) => {
         const next = { ...prev, wakeLockEnabled: true };
         saveSettings(next);
+        pushCloudUpdate({ settings: next });
         return next;
       });
     }
   };
 
-  // State Persistence Helpers
+  // State Persistence Helpers (Local + Realtime Cloud Firestore)
   const updateMachinesState = (newMachines: Machine[]) => {
     setMachines(newMachines);
     saveMachines(newMachines);
+    pushCloudUpdate({ machines: newMachines });
   };
 
   const updateSessionsState = (newSessions: Session[]) => {
     setSessions(newSessions);
     saveSessions(newSessions);
+    pushCloudUpdate({ sessions: newSessions });
   };
 
   const updateTransactionsState = (newTransactions: TransactionRecord[]) => {
     setTransactions(newTransactions);
     saveTransactions(newTransactions);
+    pushCloudUpdate({ transactions: newTransactions });
   };
 
   const updateQueueState = (newQueue: QueueItem[]) => {
     setQueue(newQueue);
     saveQueue(newQueue);
+    pushCloudUpdate({ queue: newQueue });
   };
 
   const updateSettingsState = (newSettings: AppSettings) => {
     setSettings(newSettings);
     saveSettings(newSettings);
+    pushCloudUpdate({ settings: newSettings });
   };
 
   // 4. Session Operations
@@ -449,6 +494,7 @@ export default function App() {
   const updatePackagesState = (newPackages: RidePackage[]) => {
     setPackages(newPackages);
     savePackages(newPackages);
+    pushCloudUpdate({ packages: newPackages });
   };
 
   const handleDeletePackage = (id: string) => {
@@ -528,6 +574,14 @@ export default function App() {
     setTransactions([]);
     setQueue([]);
     setSettings(DEFAULT_SETTINGS);
+    pushCloudUpdate({
+      machines: DEFAULT_MACHINES,
+      packages: DEFAULT_PACKAGES,
+      sessions: [],
+      transactions: [],
+      queue: [],
+      settings: DEFAULT_SETTINGS,
+    });
   };
 
   const availableMachines = useMemo(
@@ -714,8 +768,9 @@ export default function App() {
         settings={settings}
       />
 
-      {/* 9. PWA Offline Status Toast Indicator */}
+      {/* 9. PWA Offline Status Toast Indicator & PWA Install Banner */}
       <OfflineBanner />
+      <PwaInstallPrompt />
     </div>
   );
 }
