@@ -9,13 +9,16 @@ const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
+  '/favicon.ico',
   '/favicon.svg',
   '/favicon.png',
+  '/favicon-16x16.png',
+  '/favicon-32x32.png',
+  '/favicon-48x48.png',
   '/icon-192.png',
   '/icon-512.png',
   '/icon-maskable-512.png',
-  '/apple-touch-icon.png',
-  '/og-image.png'
+  '/apple-touch-icon.png'
 ];
 
 // Install Event - Pre-cache essential app shell assets
