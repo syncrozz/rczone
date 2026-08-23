@@ -231,6 +231,23 @@ export const MachineCard: React.FC<MachineCardProps> = ({
                 )}
               </div>
             </div>
+
+            {/* Customer Alarm Stopped Notification Badge on Card */}
+            {session.customerStoppedAlarmAt && (
+              <div className="px-2.5 py-1.5 rounded-lg bg-rose-500/15 border border-rose-500/40 flex items-center justify-between text-[10px] font-mono text-rose-300 animate-pulse">
+                <div className="flex items-center gap-1.5 font-bold">
+                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                  <span>
+                    {session.customerStoppedAlarmReason === 'EARLY_STOPPED'
+                      ? 'Sesi Dihentikan Awal'
+                      : 'Penggera Ditutup Pelanggan'}
+                  </span>
+                </div>
+                <span className="text-rose-200 font-bold">
+                  {formatClockTime(session.customerStoppedAlarmAt)}
+                </span>
+              </div>
+            )}
           </div>
         )}
 

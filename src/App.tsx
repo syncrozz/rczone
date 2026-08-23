@@ -12,7 +12,7 @@ import { OfflineBanner } from './components/OfflineBanner';
 import { PwaInstallPrompt } from './components/PwaInstallPrompt';
 import { SessionQrModal } from './components/SessionQrModal';
 import { CustomerLiveView } from './components/CustomerLiveView';
-import { Machine, RidePackage, Session, TransactionRecord, QueueItem, AppSettings, AssetType } from './types';
+import { Machine, RidePackage, Session, TransactionRecord, QueueItem, AppSettings, AssetType, CustomerAlert } from './types';
 import {
   loadInitialData,
   saveMachines,
@@ -42,7 +42,8 @@ import {
   triggerVibration,
 } from './utils/sound';
 import { requestWakeLock, releaseWakeLock, isWakeLockActive } from './utils/wakelock';
-import { deriveMachineStatus } from './utils/format';
+import { deriveMachineStatus, formatClockTime } from './utils/format';
+import { VolumeX, Bell, CheckCircle2, AlertTriangle, ShieldAlert } from 'lucide-react';
 
 export default function App() {
   // Load persistent state
@@ -55,6 +56,7 @@ export default function App() {
   const [transactions, setTransactions] = useState<TransactionRecord[]>(initialData.transactions);
   const [queue, setQueue] = useState<QueueItem[]>(initialData.queue);
   const [settings, setSettings] = useState<AppSettings>(initialData.settings);
+  const [customerAlerts, setCustomerAlerts] = useState<CustomerAlert[]>([]);
 
   // Live timer clock
   const [nowTimestamp, setNowTimestamp] = useState<number>(Date.now());
@@ -184,10 +186,30 @@ export default function App() {
         setSettings((prev) => ({ ...prev, ...cloudData.settings }));
         saveSettings({ ...settings, ...cloudData.settings });
       }
+      if (cloudData.customerAlerts !== undefined) {
+        setCustomerAlerts((prevAlerts) => {
+          // Check if there are newly arrived alerts to play an alert chime
+          const prevIds = new Set(prevAlerts.map((a) => a.id));
+          const newAlerts = cloudData.customerAlerts!.filter((a) => !prevIds.has(a.id) && !a.acknowledged);
+          if (newAlerts.length > 0) {
+            playEndingSoonSound(settings.soundEnabled);
+            triggerVibration([300, 100, 300], settings.vibrationEnabled);
+          }
+          return cloudData.customerAlerts!;
+        });
+      }
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [settings.soundEnabled, settings.vibrationEnabled]);
+
+  const handleDismissCustomerAlert = (alertId: string) => {
+    setCustomerAlerts((prev) => {
+      const next = prev.map((a) => (a.id === alertId ? { ...a, acknowledged: true } : a));
+      pushCloudUpdate({ customerAlerts: next });
+      return next;
+    });
+  };
 
   // 5. PWA Shortcuts & URL Query Actions Handler
   useEffect(() => {
@@ -669,6 +691,47 @@ export default function App() {
         isAdminMode={isAdminMode}
         onToggleAdminMode={handleToggleAdminMode}
       />
+
+      {/* Real-time Customer Alarm Stopped / Early Finish Notification Banner */}
+      {customerAlerts.filter((a) => !a.acknowledged && (nowTimestamp - a.timestamp < 300000)).length > 0 && (
+        <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 pt-3 space-y-2">
+          {customerAlerts
+            .filter((a) => !a.acknowledged && (nowTimestamp - a.timestamp < 300000))
+            .map((alert) => (
+              <div
+                key={alert.id}
+                className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-rose-900/90 via-rose-800/90 to-rose-900/90 border-2 border-rose-500 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xl shadow-rose-950/80 animate-pulse"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white text-rose-950 flex items-center justify-center font-black shrink-0 shadow-lg">
+                    <VolumeX className="w-5 h-5 text-rose-600" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-chakra font-black tracking-wider uppercase bg-rose-950 px-2 py-0.5 rounded text-rose-200 border border-rose-500/50">
+                        {alert.type === 'EARLY_STOP' ? '🚨 SESI TAMAT AWAL' : '🚨 PENGGERA DIHENTIKAN'}
+                      </span>
+                      <span className="text-[10px] font-mono text-rose-300">
+                        {formatClockTime(alert.timestamp)}
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm font-bold text-white mt-1">
+                      {alert.message}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleDismissCustomerAlert(alert.id)}
+                  className="px-4 py-2 rounded-xl bg-white hover:bg-slate-100 text-rose-950 font-chakra font-black text-xs uppercase tracking-wider shadow-md active:scale-95 transition-all cursor-pointer shrink-0 text-center"
+                >
+                  SAHKAN / TUTUP
+                </button>
+              </div>
+            ))}
+        </div>
+      )}
 
       {/* Main Control Board View */}
       <ControlBoard

@@ -50,6 +50,20 @@ export interface Session {
   status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
   completedAt?: number;
   extensionsCount?: number;
+  customerStoppedAlarmAt?: number; // Timestamp when customer pressed Stop Alarm / Finished early
+  customerStoppedAlarmReason?: 'TIME_UP_STOPPED' | 'EARLY_STOPPED';
+}
+
+export interface CustomerAlert {
+  id: string;
+  sessionId: string;
+  machineId: string;
+  machineName: string;
+  customerName: string;
+  type: 'ALARM_STOPPED' | 'EARLY_STOP';
+  message: string;
+  timestamp: number;
+  acknowledged?: boolean;
 }
 
 export interface TransactionRecord {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   Clock,
   Volume2,
@@ -13,9 +13,12 @@ import {
   ShieldCheck,
   RefreshCw,
   PhoneCall,
+  Hand,
+  Check,
 } from 'lucide-react';
 import { formatClockTime, formatTimeRemaining } from '../utils/format';
 import { resolveAssetType, loadInitialData } from '../utils/storage';
+import { notifyCustomerAlarmStopped } from '../services/firebaseSync';
 
 interface CustomerLiveViewProps {
   onBackToDashboard?: () => void;
@@ -29,6 +32,7 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
   }, []);
 
   const sessionId = searchParams.get('session_id') || 'sess_demo';
+  const machineId = searchParams.get('machine_id') || 'm_default';
   const machineName = searchParams.get('machine_name') || 'Excavator EX-01';
   const machineType = searchParams.get('machine_type') || 'excavator';
   const customerName = searchParams.get('customer') || 'Pelanggan';
@@ -40,10 +44,14 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
   const businessName = searchParams.get('biz') || 'FUN RIDE RC ZONE';
 
   const [now, setNow] = useState<number>(Date.now());
-  const [audioEnabled, setAudioEnabled] = useState<boolean>(false);
+  // Penggera telefon adalah AUTOMATIK AKTIF secara lalai
+  const [audioEnabled, setAudioEnabled] = useState<boolean>(true);
+  const [audioContextReady, setAudioContextReady] = useState<boolean>(false);
   const [isAlarmPlaying, setIsAlarmPlaying] = useState<boolean>(false);
-  const [hasInteracted, setHasInteracted] = useState<boolean>(false);
+  const [hasStoppedAlarm, setHasStoppedAlarm] = useState<boolean>(false);
+  const [stopSuccessMessage, setStopSuccessMessage] = useState<string | null>(null);
   const [showShareToast, setShowShareToast] = useState<boolean>(false);
+  const [showEarlyFinishConfirm, setShowEarlyFinishConfirm] = useState<boolean>(false);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const alarmIntervalRef = useRef<number | null>(null);
@@ -57,18 +65,8 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
     return () => clearInterval(timer);
   }, []);
 
-  // Calculate live remaining time
-  const totalDurationMs = Math.max(1000, durationMinutes * 60 * 1000);
-  const elapsedMs = Math.max(0, now - startTime);
-  const remainingMs = Math.max(0, rawEndTime - now);
-  const remainingSeconds = Math.ceil(remainingMs / 1000);
-  const progressPercent = Math.min(100, Math.max(0, (elapsedMs / totalDurationMs) * 100));
-
-  const isTimeUp = now >= rawEndTime;
-  const isEndingSoon = !isTimeUp && remainingSeconds <= 60;
-
-  // Initialize Web Audio context on user tap
-  const initAudio = () => {
+  // Unlock AudioContext on ANY first touch / click across the mobile screen
+  const unlockAudioContext = useCallback(() => {
     try {
       if (!audioCtxRef.current) {
         const AudioCtxClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -79,15 +77,44 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
       if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
         audioCtxRef.current.resume();
       }
-      setAudioEnabled(true);
-      setHasInteracted(true);
+      setAudioContextReady(true);
     } catch (e) {
-      console.warn('Audio init error:', e);
+      console.warn('Audio Context unlock error:', e);
     }
-  };
+  }, []);
 
-  // Sound Synthesizer: Alarm Siren
-  const playSirenChime = () => {
+  // Global listener to silently auto-prime AudioContext on first touch
+  useEffect(() => {
+    const handleFirstGesture = () => {
+      unlockAudioContext();
+      window.removeEventListener('click', handleFirstGesture);
+      window.removeEventListener('touchstart', handleFirstGesture);
+      window.removeEventListener('touchend', handleFirstGesture);
+    };
+
+    window.addEventListener('click', handleFirstGesture, { once: true });
+    window.addEventListener('touchstart', handleFirstGesture, { once: true });
+    window.addEventListener('touchend', handleFirstGesture, { once: true });
+
+    return () => {
+      window.removeEventListener('click', handleFirstGesture);
+      window.removeEventListener('touchstart', handleFirstGesture);
+      window.removeEventListener('touchend', handleFirstGesture);
+    };
+  }, [unlockAudioContext]);
+
+  // Calculate live remaining time
+  const totalDurationMs = Math.max(1000, durationMinutes * 60 * 1000);
+  const elapsedMs = Math.max(0, now - startTime);
+  const remainingMs = Math.max(0, rawEndTime - now);
+  const remainingSeconds = Math.ceil(remainingMs / 1000);
+  const progressPercent = Math.min(100, Math.max(0, (elapsedMs / totalDurationMs) * 100));
+
+  const isTimeUp = now >= rawEndTime;
+  const isEndingSoon = !isTimeUp && remainingSeconds <= 60;
+
+  // Sound Synthesizer: Loud Motorsport Alarm Siren
+  const playSirenChime = useCallback(() => {
     try {
       if (!audioCtxRef.current) {
         const AudioCtxClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -102,61 +129,92 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
         ctx.resume();
       }
 
-      // 4-note energetic motorsport finish fanfare
-      const melody = [587.33, 739.99, 880.00, 1174.66]; // D5, F#5, A5, D6
+      // Motorsport energetic siren fanfare (D5, F#5, A5, D6, A5, D6)
+      const melody = [587.33, 739.99, 880.00, 1174.66, 880.00, 1174.66];
       melody.forEach((freq, idx) => {
-        const noteStart = ctx.currentTime + idx * 0.12;
+        const noteStart = ctx.currentTime + idx * 0.14;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
 
-        osc.type = 'triangle';
+        osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(freq, noteStart);
 
         gain.gain.setValueAtTime(0, noteStart);
-        gain.gain.linearRampToValueAtTime(0.35, noteStart + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.001, noteStart + 0.28);
+        gain.gain.linearRampToValueAtTime(0.45, noteStart + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, noteStart + 0.32);
 
         osc.connect(gain);
         gain.connect(ctx.destination);
 
         osc.start(noteStart);
-        osc.stop(noteStart + 0.28);
+        osc.stop(noteStart + 0.32);
       });
     } catch (e) {
       console.warn('Play siren error:', e);
     }
-  };
+  }, []);
 
   // Trigger Alarm when time hits 0
   useEffect(() => {
-    if (isTimeUp && !alarmFiredRef.current) {
+    if (isTimeUp && !alarmFiredRef.current && !hasStoppedAlarm) {
       alarmFiredRef.current = true;
       setIsAlarmPlaying(true);
 
-      // Play sound
-      if (audioEnabled) {
+      // Play continuous alarm siren loop
+      playSirenChime();
+      if (alarmIntervalRef.current) clearInterval(alarmIntervalRef.current);
+      alarmIntervalRef.current = window.setInterval(() => {
         playSirenChime();
-        if (alarmIntervalRef.current) clearInterval(alarmIntervalRef.current);
-        alarmIntervalRef.current = window.setInterval(() => {
-          playSirenChime();
-        }, 2200);
-      }
+      }, 1900);
 
-      // Trigger mobile vibration
+      // Trigger phone vibration
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         try {
-          navigator.vibrate([400, 200, 400, 200, 800]);
+          navigator.vibrate([500, 250, 500, 250, 1000]);
         } catch (e) {}
       }
     }
-  }, [isTimeUp, audioEnabled]);
+  }, [isTimeUp, hasStoppedAlarm, playSirenChime]);
 
-  const handleStopAlarm = () => {
+  // Customer Action: STOP ALARM (Masa Tamat)
+  const handleStopAlarm = async () => {
     if (alarmIntervalRef.current) {
       clearInterval(alarmIntervalRef.current);
       alarmIntervalRef.current = null;
     }
     setIsAlarmPlaying(false);
+    setHasStoppedAlarm(true);
+    setStopSuccessMessage('✅ Penggera telah dimatikan. Notifikasi dihantar ke kaunter Admin.');
+
+    // Kirim notifikasi kepada admin secara masa nyata melalui Firestore Sync
+    await notifyCustomerAlarmStopped(
+      sessionId,
+      machineId,
+      machineName,
+      customerName,
+      'TIME_UP_STOPPED'
+    );
+  };
+
+  // Customer Action: SELESAIKAN SESI LEBIH AWAL
+  const handleConfirmEarlyFinish = async () => {
+    if (alarmIntervalRef.current) {
+      clearInterval(alarmIntervalRef.current);
+      alarmIntervalRef.current = null;
+    }
+    setIsAlarmPlaying(false);
+    setHasStoppedAlarm(true);
+    setShowEarlyFinishConfirm(false);
+    setStopSuccessMessage('🏁 Anda telah menamatkan sesi lebih awal. Sila pulangkan alat kawalan kepada staf.');
+
+    // Kirim notifikasi kepada admin
+    await notifyCustomerAlarmStopped(
+      sessionId,
+      machineId,
+      machineName,
+      customerName,
+      'EARLY_STOPPED'
+    );
   };
 
   // Native Web Share or Copy Link
@@ -195,13 +253,17 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
   };
 
   return (
-    <div className={`min-h-screen flex flex-col justify-between text-slate-100 font-sans p-4 sm:p-6 transition-colors duration-500 ${
-      isTimeUp
-        ? 'bg-gradient-to-b from-[#2a0b12] via-[#1a080d] to-[#0a0406]'
-        : isEndingSoon
-        ? 'bg-gradient-to-b from-[#24170a] via-[#151008] to-[#0b0c10]'
-        : 'bg-gradient-to-b from-[#0b121e] via-[#080d16] to-[#05080e]'
-    }`}>
+    <div
+      onClick={unlockAudioContext}
+      onTouchStart={unlockAudioContext}
+      className={`min-h-screen flex flex-col justify-between text-slate-100 font-sans p-4 sm:p-6 transition-colors duration-500 select-none ${
+        isTimeUp
+          ? 'bg-gradient-to-b from-[#2a0b12] via-[#1a080d] to-[#0a0406]'
+          : isEndingSoon
+          ? 'bg-gradient-to-b from-[#24170a] via-[#151008] to-[#0b0c10]'
+          : 'bg-gradient-to-b from-[#0b121e] via-[#080d16] to-[#05080e]'
+      }`}
+    >
       {/* Background Motorsport Ambient Glow */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div
@@ -238,51 +300,54 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
 
       {/* Main Container Content */}
       <main className="relative z-10 w-full max-w-md mx-auto my-auto py-4 space-y-4">
-        {/* Audio Siren Enable Callout (if not yet enabled) */}
-        {!hasInteracted && (
-          <button
-            type="button"
-            onClick={initAudio}
-            className="w-full p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/20 via-amber-500/10 to-amber-500/20 border border-amber-400/60 flex items-center justify-between gap-3 text-left shadow-lg shadow-amber-500/10 animate-bounce active:scale-98 transition-all cursor-pointer"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-black shrink-0">
-                <Bell className="w-5 h-5 animate-spin" />
-              </div>
-              <div>
-                <p className="text-xs font-black text-amber-300 uppercase tracking-wide">
-                  Aktifkan Penggera Telefon
-                </p>
-                <p className="text-[11px] text-slate-300 font-mono">
-                  Tekan sini supaya bunyi siren berdering apabila masa tamat!
-                </p>
-              </div>
+        {/* AUTOMATIC AUTO-ARMED TELEPHONE ALARM BADGE */}
+        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-[#101927] to-emerald-500/15 border border-emerald-500/40 flex items-center justify-between gap-3 shadow-lg shadow-emerald-500/5">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center text-emerald-400 shrink-0">
+              <ShieldCheck className="w-4.5 h-4.5" />
             </div>
-            <span className="px-2.5 py-1 rounded-lg bg-amber-400 text-slate-950 text-[10px] font-mono font-black uppercase tracking-wider shrink-0">
-              AKTIFKAN
-            </span>
-          </button>
-        )}
+            <div>
+              <p className="text-[11px] font-black text-emerald-300 uppercase tracking-wide flex items-center gap-1.5">
+                <span>Penggera Telefon Automatik Aktif</span>
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              </p>
+              <p className="text-[10px] text-slate-300 font-mono">
+                Siren akan berdering secara automatik di telefon anda apabila masa tamat.
+              </p>
+            </div>
+          </div>
+          <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] font-mono font-black uppercase tracking-wider shrink-0">
+            AUTO-ARMED
+          </span>
+        </div>
 
-        {/* TIME UP ALARM ACTIVE BANNER */}
-        {isTimeUp && (
-          <div className="p-4 rounded-2xl bg-rose-600/90 border border-rose-400 text-white text-center shadow-2xl shadow-rose-600/50 animate-pulse space-y-2">
+        {/* TIME UP ALARM ACTIVE BANNER (SIREN PLAYING) */}
+        {isTimeUp && isAlarmPlaying && (
+          <div className="p-4 rounded-3xl bg-rose-600 border-2 border-rose-400 text-white text-center shadow-2xl shadow-rose-600/60 animate-bounce space-y-3">
             <div className="text-3xl">🚨</div>
             <h2 className="text-xl font-chakra font-black tracking-wider uppercase">
               MASA ANDA TELAH TAMAT!
             </h2>
             <p className="text-xs text-rose-100 font-mono">
-              Sila hentikan kenderaan RC dan pulangkan alat kawalan kepada staf bertugas.
+              Penggera siren sedang berdering di telefon anda. Sila hentikan penggera dan pulangkan alat kawalan.
             </p>
-            {isAlarmPlaying && (
-              <button
-                type="button"
-                onClick={handleStopAlarm}
-                className="mt-2 w-full py-2.5 px-4 rounded-xl bg-white hover:bg-slate-100 text-rose-950 font-chakra font-black text-xs uppercase tracking-wider shadow-md active:scale-95 transition-all cursor-pointer"
-              >
-                🔴 MATIKAN BUNYI SIREN
-              </button>
-            )}
+            <button
+              type="button"
+              id="btn-customer-stop-alarm"
+              onClick={handleStopAlarm}
+              className="w-full py-3.5 px-4 rounded-2xl bg-white hover:bg-slate-100 text-rose-950 font-chakra font-black text-sm uppercase tracking-wider shadow-xl active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
+            >
+              <VolumeX className="w-5 h-5 text-rose-600" />
+              <span>🛑 HENTIKAN PENGGERA (STOP)</span>
+            </button>
+          </div>
+        )}
+
+        {/* STOP CONFIRMATION NOTICE */}
+        {stopSuccessMessage && (
+          <div className="p-3.5 rounded-2xl bg-emerald-500/20 border border-emerald-400/60 text-emerald-200 text-xs font-mono text-center flex items-center justify-center gap-2 shadow-lg">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{stopSuccessMessage}</span>
           </div>
         )}
 
@@ -391,24 +456,52 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
             <span className="font-bold text-amber-300">{durationMinutes} Minit</span>
           </div>
           <div className="flex items-center justify-between text-slate-300">
-            <span className="text-slate-400">Status Audio Penggera:</span>
-            <span className="flex items-center gap-1.5 font-bold">
-              {audioEnabled ? (
-                <span className="text-emerald-400 flex items-center gap-1">
-                  <Volume2 className="w-3.5 h-3.5" /> Aktif
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={initAudio}
-                  className="text-amber-400 underline hover:text-amber-300 cursor-pointer flex items-center gap-1"
-                >
-                  <VolumeX className="w-3.5 h-3.5" /> Tekan Untuk Aktifkan
-                </button>
-              )}
+            <span className="text-slate-400">Status Penggera Telefon:</span>
+            <span className="flex items-center gap-1.5 font-bold text-emerald-400">
+              <Volume2 className="w-3.5 h-3.5" />
+              <span>Automatik Aktif (Auto-Armed)</span>
             </span>
           </div>
         </div>
+
+        {/* Early Finish Action Button (Customer can stop anytime) */}
+        {!isTimeUp && !hasStoppedAlarm && (
+          <div>
+            {!showEarlyFinishConfirm ? (
+              <button
+                type="button"
+                id="btn-customer-early-finish"
+                onClick={() => setShowEarlyFinishConfirm(true)}
+                className="w-full p-3 rounded-2xl bg-[#131d2e] hover:bg-[#18263c] border border-slate-700/80 hover:border-amber-400/50 text-slate-300 hover:text-amber-300 font-chakra font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
+              >
+                <Hand className="w-4 h-4 text-amber-400" />
+                <span>Hentikan / Selesaikan Sesi Lebih Awal</span>
+              </button>
+            ) : (
+              <div className="p-3.5 rounded-2xl bg-amber-500/15 border-2 border-amber-500/50 space-y-2 animate-in fade-in">
+                <p className="text-xs font-mono text-amber-200 text-center font-bold">
+                  Adakah anda pasti mahu menamatkan sesi RC sekarang?
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={handleConfirmEarlyFinish}
+                    className="py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-chakra font-black text-xs uppercase tracking-wider shadow active:scale-95 cursor-pointer text-center"
+                  >
+                    Ya, Tamatkan Sesi
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowEarlyFinishConfirm(false)}
+                    className="py-2 px-3 rounded-xl bg-[#101723] hover:bg-slate-800 text-slate-300 border border-slate-700 font-chakra font-black text-xs uppercase tracking-wider active:scale-95 cursor-pointer text-center"
+                  >
+                    Batal
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Action Buttons: Share & Test Siren */}
         <div className="grid grid-cols-2 gap-2">
@@ -424,13 +517,13 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
           <button
             type="button"
             onClick={() => {
-              initAudio();
+              unlockAudioContext();
               playSirenChime();
             }}
             className="p-3 rounded-xl bg-[#131d2e] hover:bg-[#18263c] border border-slate-700/80 text-slate-200 font-chakra font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
           >
             <Bell className="w-4 h-4 text-amber-400" />
-            <span>Uji Siren</span>
+            <span>Uji Siren Speaker</span>
           </button>
         </div>
 
@@ -444,7 +537,7 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
       {/* Footer & Admin Switch Back */}
       <footer className="relative z-10 w-full max-w-md mx-auto pt-3 border-t border-slate-800/80 text-center space-y-2">
         <p className="text-[11px] font-mono text-slate-500">
-          Sila kekalkan halaman ini dibuka untuk pemantauan masa berterusan.
+          Kekalkan skrin ini dibuka. Sistem keselamatan akan memaklumkan kaunter apabila penggera dihentikan.
         </p>
 
         {onBackToDashboard && (
@@ -460,3 +553,4 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
     </div>
   );
 };
+
