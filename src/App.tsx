@@ -8,6 +8,7 @@ import { QueueDrawer } from './components/QueueDrawer';
 import { TransactionsDrawer } from './components/TransactionsDrawer';
 import { SettingsModal } from './components/SettingsModal';
 import { AdminPinModal } from './components/AdminPinModal';
+import { OfflineBanner } from './components/OfflineBanner';
 import { Machine, RidePackage, Session, TransactionRecord, QueueItem, AppSettings } from './types';
 import {
   loadInitialData,
@@ -128,6 +129,27 @@ export default function App() {
       releaseWakeLock().then(() => setWakeLockState(false));
     }
   }, [settings.wakeLockEnabled]);
+
+  // 4. PWA Shortcuts & URL Query Actions Handler
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const action = urlParams.get('action');
+
+    if (action === 'new-session') {
+      setNewSessionOpen(true);
+    } else if (action === 'queue') {
+      setQueueDrawerOpen(true);
+    } else if (action === 'transactions') {
+      setTransactionsDrawerOpen(true);
+    }
+
+    // Clean up query param from URL without page reload
+    if (action) {
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+  }, []);
 
   const handleToggleWakeLock = async () => {
     if (wakeLockState) {
@@ -639,6 +661,9 @@ export default function App() {
         title={pinModalTitle}
         description={pinModalDesc}
       />
+
+      {/* 8. PWA Offline Status Toast Indicator */}
+      <OfflineBanner />
     </div>
   );
 }

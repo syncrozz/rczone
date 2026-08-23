@@ -1,6 +1,6 @@
 {
   "name": "RC Fun Ride Manager",
-  "description": "Control Board and session timer manager for RC Fun Ride machines",
+  "description": "Sistem Kawalan Telemetri & Pengurusan Sesi RC Zone Motorsport",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

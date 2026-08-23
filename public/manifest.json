@@ -1,0 +1,63 @@
+{
+  "name": "RC Fun Ride Manager",
+  "short_name": "RC Fun Ride",
+  "description": "Sistem Kawalan Telemetri & Pengurusan Sesi RC Zone Motorsport",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#070a0f",
+  "theme_color": "#0a0e17",
+  "categories": ["business", "utilities", "productivity"],
+  "lang": "ms",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "64x64",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mula Sesi",
+      "short_name": "Sesi Baru",
+      "description": "Buka panel untuk memulakan sesi mesin baru",
+      "url": "/?action=new-session",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Senarai Giliran",
+      "short_name": "Giliran",
+      "description": "Semak dan urus senarai giliran pelanggan",
+      "url": "/?action=queue",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Rekod Transaksi",
+      "short_name": "Transaksi",
+      "description": "Lihat ringkasan kutipan dan transaksi harian",
+      "url": "/?action=transactions",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
