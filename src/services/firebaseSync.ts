@@ -2,8 +2,8 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { Machine, RidePackage, Session, TransactionRecord, QueueItem, AppSettings } from '../types';
-import { DEFAULT_MACHINES, DEFAULT_PACKAGES, DEFAULT_SETTINGS } from '../utils/storage';
+import { Machine, RidePackage, Session, TransactionRecord, QueueItem, AppSettings, AssetType } from '../types';
+import { DEFAULT_MACHINES, DEFAULT_ASSET_TYPES, DEFAULT_PACKAGES, DEFAULT_SETTINGS } from '../utils/storage';
 
 // Initialize Firebase App
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
@@ -38,6 +38,7 @@ const SYNC_DOC_ID = 'state';
 
 export interface CloudSystemState {
   machines: Machine[];
+  assetTypes?: AssetType[];
   packages: RidePackage[];
   sessions: Session[];
   transactions: TransactionRecord[];
@@ -66,6 +67,7 @@ export function subscribeToCloudSync(
         // First time initialization in Cloud Firestore
         const initialState: CloudSystemState = {
           machines: DEFAULT_MACHINES,
+          assetTypes: DEFAULT_ASSET_TYPES,
           packages: DEFAULT_PACKAGES,
           sessions: [],
           transactions: [],

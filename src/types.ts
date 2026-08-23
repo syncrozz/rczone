@@ -1,4 +1,14 @@
-export type MachineType = 'excavator' | 'bulldozer' | 'dumptruck' | 'crane' | 'loader' | 'generic';
+// Dynamic string type allowing both standard legacy keys ('excavator', 'bulldozer', etc.) and user-created custom asset types
+export type MachineType = string;
+
+export interface AssetType {
+  id: string;
+  name: string;
+  icon: string; // Emoji symbol e.g. 🚜, 🚧, 🚛, 🏗️, 🎮, etc.
+  active: boolean;
+  createdAt?: number;
+  updatedAt?: number;
+}
 
 export type MachineStatus = 'READY' | 'RUNNING' | 'ENDING_SOON' | 'TIME_UP' | 'MAINTENANCE';
 
@@ -6,10 +16,13 @@ export interface Machine {
   id: string;
   name: string;
   type: MachineType;
+  typeId?: string; // Optional reference to AssetType id
   customTypeLabel?: string;
   status: MachineStatus;
   activeSessionId?: string;
   color?: string;
+  createdAt?: number;
+  updatedAt?: number;
 }
 
 export interface RidePackage {

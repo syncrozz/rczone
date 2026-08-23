@@ -189,14 +189,15 @@ export const Header: React.FC<HeaderProps> = ({
                   playTapSound(settings.soundEnabled);
                   onOpenSettings();
                 }}
-                className={`p-2 rounded-xl border text-xs active:scale-95 transition-all cursor-pointer ${
+                className={`px-2.5 py-1.5 rounded-xl border text-[10px] font-chakra font-black flex items-center gap-1 active:scale-95 transition-all cursor-pointer ${
                   isAdminMode
-                    ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-md shadow-amber-500/20'
-                    : 'border-slate-800 bg-[#131b28] text-slate-300 hover:text-white hover:border-slate-700'
+                    ? 'bg-amber-500 text-slate-950 border-amber-400 font-black shadow-md shadow-amber-500/20 animate-pulse'
+                    : 'border-slate-700/80 bg-[#131b28] text-slate-300 hover:text-white hover:border-amber-500/40'
                 }`}
-                title="Tetapan Sistem"
+                title="Tetapan Sistem & Koleksi"
               >
-                <Settings className="w-3.5 h-3.5" />
+                <Settings className={`w-3.5 h-3.5 ${isAdminMode ? 'text-slate-950' : 'text-amber-400'}`} />
+                <span>TETAPAN</span>
               </button>
             </div>
           </div>
@@ -429,6 +430,7 @@ export const Header: React.FC<HeaderProps> = ({
                 )}
               </button>
 
+
               {/* Race Action Start Button (Admin Access Mode only) */}
               {isAdminMode && (
                 <button
@@ -438,7 +440,7 @@ export const Header: React.FC<HeaderProps> = ({
                     playTapSound(settings.soundEnabled);
                     onOpenNewSession();
                   }}
-                  className="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black px-4.5 py-1.5 rounded-xl flex items-center gap-2 text-xs uppercase tracking-wider shadow-lg shadow-amber-500/25 active:scale-95 transition-all cursor-pointer animate-pulse"
+                  className="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black px-4.5 py-1.5 rounded-xl flex items-center gap-2 text-xs uppercase tracking-wider shadow-lg shadow-amber-500/25 active:scale-95 transition-all cursor-pointer"
                   title="Tambah Sesi Baru (Mod Pentadbir)"
                 >
                   <Plus className="w-4 h-4 stroke-[3]" />

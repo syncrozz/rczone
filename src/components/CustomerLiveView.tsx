@@ -15,6 +15,7 @@ import {
   PhoneCall,
 } from 'lucide-react';
 import { formatClockTime, formatTimeRemaining } from '../utils/format';
+import { resolveAssetType, loadInitialData } from '../utils/storage';
 
 interface CustomerLiveViewProps {
   onBackToDashboard?: () => void;
@@ -184,19 +185,12 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
   };
 
   const getMachineEmoji = () => {
-    switch (machineType) {
-      case 'excavator':
-        return '🚜';
-      case 'bulldozer':
-        return '🚧';
-      case 'dumptruck':
-        return '🚛';
-      case 'crane':
-        return '🏗️';
-      case 'loader':
-        return '🚜';
-      default:
-        return '🏎️';
+    try {
+      const initial = loadInitialData();
+      const resolved = resolveAssetType(machineType, initial.assetTypes);
+      return resolved.icon || '🏎️';
+    } catch {
+      return '🏎️';
     }
   };
 

@@ -11,7 +11,8 @@ import {
   Truck,
   Zap,
 } from 'lucide-react';
-import { Machine, RidePackage, QueueItem, AppSettings } from '../types';
+import { Machine, RidePackage, QueueItem, AppSettings, AssetType } from '../types';
+import { resolveAssetType } from '../utils/storage';
 import { playTapSound } from '../utils/sound';
 
 interface NewSessionModalProps {
@@ -20,6 +21,7 @@ interface NewSessionModalProps {
   availableMachines: Machine[];
   packages: RidePackage[];
   queue: QueueItem[];
+  assetTypes?: AssetType[];
   preselectedMachineId?: string;
   preselectedQueueItem?: QueueItem;
   settings: AppSettings;
@@ -37,6 +39,7 @@ export const NewSessionModal: React.FC<NewSessionModalProps> = ({
   availableMachines,
   packages,
   queue,
+  assetTypes,
   preselectedMachineId,
   preselectedQueueItem,
   settings,
@@ -197,6 +200,7 @@ export const NewSessionModal: React.FC<NewSessionModalProps> = ({
               <div className="grid grid-cols-2 gap-2.5">
                 {availableMachines.map((m) => {
                   const isSelected = selectedMachineId === m.id;
+                  const assetTypeInfo = resolveAssetType(m.type || m.typeId, assetTypes);
                   return (
                     <button
                       key={m.id}
@@ -212,14 +216,14 @@ export const NewSessionModal: React.FC<NewSessionModalProps> = ({
                       }`}
                     >
                       <span className="text-2xl">
-                        {m.type === 'excavator' ? '🚜' : m.type === 'bulldozer' ? '🚧' : m.type === 'dumptruck' ? '🚛' : '🎮'}
+                        {assetTypeInfo.icon}
                       </span>
                       <div className="min-w-0">
                         <div className="font-mono font-black text-xs sm:text-sm text-white truncate">
                           {m.name}
                         </div>
                         <div className="text-[10px] font-mono text-emerald-400 font-bold uppercase tracking-wider">
-                          READY
+                          READY &bull; {assetTypeInfo.name}
                         </div>
                       </div>
                     </button>

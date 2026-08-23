@@ -11,20 +11,24 @@ import {
   SlidersHorizontal,
   Activity,
   Zap,
+  Settings,
+  Boxes,
 } from 'lucide-react';
-import { Machine, Session, AppSettings, RidePackage, QueueItem, TransactionRecord } from '../types';
+import { Machine, Session, AppSettings, RidePackage, QueueItem, TransactionRecord, AssetType } from '../types';
 import { MachineCard } from './MachineCard';
 import { deriveMachineStatus } from '../utils/format';
 import { playTapSound } from '../utils/sound';
 
 interface ControlBoardProps {
   machines: Machine[];
+  assetTypes?: AssetType[];
   sessions: Session[];
   packages: RidePackage[];
   queue: QueueItem[];
   transactions: TransactionRecord[];
   nowTimestamp: number;
   settings: AppSettings;
+  isAdminMode?: boolean;
   onOpenNewSession: (preselectedMachineId?: string) => void;
   onPauseResumeSession: (session: Session) => void;
   onCompleteSession: (session: Session) => void;
@@ -41,12 +45,14 @@ interface ControlBoardProps {
 
 export const ControlBoard: React.FC<ControlBoardProps> = ({
   machines,
+  assetTypes,
   sessions,
   packages,
   queue,
   transactions,
   nowTimestamp,
   settings,
+  isAdminMode = false,
   onOpenNewSession,
   onPauseResumeSession,
   onCompleteSession,
@@ -244,16 +250,33 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
           )}
         </div>
 
-        {/* Technical Instrument Search Input */}
-        <div className="relative min-w-[240px]">
-          <Search className="w-4 h-4 text-amber-400/80 absolute left-3.5 top-3" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari mesin / ID unit..."
-            className="w-full pl-10 pr-3 py-2 rounded-xl border border-slate-700/80 bg-[#0c121c] text-white placeholder-slate-500 text-xs font-mono focus:border-amber-400 focus:ring-1 focus:ring-amber-400/40 focus:outline-none"
-          />
+        {/* Right side: Search Input & Quick Asset Settings Button */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 sm:w-60">
+            <Search className="w-4 h-4 text-amber-400/80 absolute left-3.5 top-3" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari mesin / ID unit..."
+              className="w-full pl-10 pr-3 py-2 rounded-xl border border-slate-700/80 bg-[#0c121c] text-white placeholder-slate-500 text-xs font-mono focus:border-amber-400 focus:ring-1 focus:ring-amber-400/40 focus:outline-none"
+            />
+          </div>
+
+          <button
+            type="button"
+            id="btn-controlboard-manage-assets"
+            onClick={() => {
+              playTapSound(settings.soundEnabled);
+              onOpenSettings();
+            }}
+            className="px-3.5 py-2 rounded-xl bg-[#151f2e] hover:bg-[#1f2e44] border border-amber-500/30 hover:border-amber-400 text-amber-400 text-xs font-chakra font-black uppercase tracking-wider flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0 shadow-xs"
+            title="Tambah atau Urus Koleksi Aset & Mesin"
+          >
+            <Boxes className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden sm:inline">Urus Koleksi</span>
+            <Settings className="w-3.5 h-3.5 text-slate-400" />
+          </button>
         </div>
       </div>
 
@@ -289,6 +312,7 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
               session={activeSession}
               nowTimestamp={nowTimestamp}
               settings={settings}
+              assetTypes={assetTypes}
               onStartSession={() => onOpenNewSession(machine.id)}
               onPauseResumeSession={onPauseResumeSession}
               onCompleteSession={onCompleteSession}

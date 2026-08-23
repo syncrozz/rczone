@@ -17,8 +17,9 @@ import {
   Zap,
   QrCode,
 } from 'lucide-react';
-import { Machine, Session, MachineStatus, AppSettings } from '../types';
+import { Machine, Session, MachineStatus, AppSettings, AssetType } from '../types';
 import { calculateSessionTime, deriveMachineStatus, formatClockTime, formatTimeRemaining, getStatusBadgeConfig } from '../utils/format';
+import { resolveAssetType } from '../utils/storage';
 import { playTapSound } from '../utils/sound';
 
 interface MachineCardProps {
@@ -26,6 +27,7 @@ interface MachineCardProps {
   session?: Session;
   nowTimestamp: number;
   settings: AppSettings;
+  assetTypes?: AssetType[];
   onStartSession: (machine: Machine) => void;
   onPauseResumeSession: (session: Session) => void;
   onCompleteSession: (session: Session) => void;
@@ -41,6 +43,7 @@ export const MachineCard: React.FC<MachineCardProps> = ({
   session,
   nowTimestamp,
   settings,
+  assetTypes,
   onStartSession,
   onPauseResumeSession,
   onCompleteSession,
@@ -61,24 +64,8 @@ export const MachineCard: React.FC<MachineCardProps> = ({
   const remainingFormatted = timeData ? formatTimeRemaining(timeData.remainingSeconds) : '--:--';
   const progressPercent = timeData ? timeData.progressPercent : 0;
 
-  // Helper for Machine Type icon
-  const renderMachineTypeIcon = () => {
-    switch (machine.type) {
-      case 'excavator':
-        return '🚜';
-      case 'bulldozer':
-        return '🚧';
-      case 'dumptruck':
-        return '🚛';
-      case 'loader':
-        return '🚜';
-      case 'crane':
-        return '🏗️';
-      case 'generic':
-      default:
-        return '🎮';
-    }
-  };
+  // Dynamic Asset Type resolution
+  const matchedAssetType = resolveAssetType(machine.type || machine.typeId, assetTypes);
 
   // Machine ID badge (e.g. M-EXC-1, M-BULL-1)
   const machineCode = machine.id.toUpperCase().replace('M_', '').replace('_', '-');
@@ -134,7 +121,7 @@ export const MachineCard: React.FC<MachineCardProps> = ({
             ID: {machineCode}
           </span>
           <span className="text-[10px] font-mono text-slate-400 uppercase">
-            {machine.customTypeLabel || machine.type}
+            {machine.customTypeLabel || matchedAssetType.name}
           </span>
         </div>
 
@@ -148,7 +135,7 @@ export const MachineCard: React.FC<MachineCardProps> = ({
       {/* Machine Identity Section */}
       <div className="pt-3 pb-2">
         <div className="flex items-center gap-2.5">
-          <span className="text-2xl filter drop-shadow-md">{renderMachineTypeIcon()}</span>
+          <span className="text-2xl filter drop-shadow-md">{matchedAssetType.icon}</span>
           <div className="min-w-0">
             <h3 className="text-xl font-chakra font-black text-white tracking-wide uppercase truncate">
               {machine.name}

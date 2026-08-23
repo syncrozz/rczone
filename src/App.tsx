@@ -12,10 +12,11 @@ import { OfflineBanner } from './components/OfflineBanner';
 import { PwaInstallPrompt } from './components/PwaInstallPrompt';
 import { SessionQrModal } from './components/SessionQrModal';
 import { CustomerLiveView } from './components/CustomerLiveView';
-import { Machine, RidePackage, Session, TransactionRecord, QueueItem, AppSettings } from './types';
+import { Machine, RidePackage, Session, TransactionRecord, QueueItem, AppSettings, AssetType } from './types';
 import {
   loadInitialData,
   saveMachines,
+  saveAssetTypes,
   savePackages,
   saveSessions,
   saveTransactions,
@@ -23,6 +24,7 @@ import {
   saveSettings,
   resetToFactoryDefaults,
   DEFAULT_MACHINES,
+  DEFAULT_ASSET_TYPES,
   DEFAULT_PACKAGES,
   DEFAULT_SETTINGS,
 } from './utils/storage';
@@ -47,6 +49,7 @@ export default function App() {
   const initialData = useRef(loadInitialData()).current;
 
   const [machines, setMachines] = useState<Machine[]>(initialData.machines);
+  const [assetTypes, setAssetTypes] = useState<AssetType[]>(initialData.assetTypes);
   const [packages, setPackages] = useState<RidePackage[]>(initialData.packages);
   const [sessions, setSessions] = useState<Session[]>(initialData.sessions);
   const [transactions, setTransactions] = useState<TransactionRecord[]>(initialData.transactions);
@@ -157,6 +160,10 @@ export default function App() {
         setMachines(cloudData.machines);
         saveMachines(cloudData.machines);
       }
+      if (cloudData.assetTypes !== undefined) {
+        setAssetTypes(cloudData.assetTypes);
+        saveAssetTypes(cloudData.assetTypes);
+      }
       if (cloudData.packages !== undefined) {
         setPackages(cloudData.packages);
         savePackages(cloudData.packages);
@@ -230,6 +237,12 @@ export default function App() {
     setMachines(newMachines);
     saveMachines(newMachines);
     pushCloudUpdate({ machines: newMachines });
+  };
+
+  const updateAssetTypesState = (newAssetTypes: AssetType[]) => {
+    setAssetTypes(newAssetTypes);
+    saveAssetTypes(newAssetTypes);
+    pushCloudUpdate({ assetTypes: newAssetTypes });
   };
 
   const updateSessionsState = (newSessions: Session[]) => {
@@ -482,6 +495,35 @@ export default function App() {
     updateMachinesState(machines.filter((m) => m.id !== id));
   };
 
+  // Asset Types Management
+  const handleAddAssetType = (newType: Omit<AssetType, 'id'>) => {
+    // Generate clean slug ID from name
+    const slug = newType.name.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 20);
+    const uniqueId = `type_${slug}_${Date.now().toString(36)}`;
+    const assetType: AssetType = {
+      ...newType,
+      id: uniqueId,
+      createdAt: Date.now(),
+    };
+    updateAssetTypesState([...assetTypes, assetType]);
+  };
+
+  const handleUpdateAssetType = (updatedType: AssetType) => {
+    updateAssetTypesState(
+      assetTypes.map((t) => (t.id === updatedType.id ? updatedType : t))
+    );
+  };
+
+  const handleToggleAssetTypeActive = (id: string) => {
+    updateAssetTypesState(
+      assetTypes.map((t) => (t.id === id ? { ...t, active: !t.active, updatedAt: Date.now() } : t))
+    );
+  };
+
+  const handleDeleteAssetType = (id: string) => {
+    updateAssetTypesState(assetTypes.filter((t) => t.id !== id));
+  };
+
   // Package Management
   const handleAddPackage = (newP: Omit<RidePackage, 'id'>) => {
     const pkg: RidePackage = {
@@ -569,6 +611,7 @@ export default function App() {
   const handleResetFactory = () => {
     resetToFactoryDefaults();
     setMachines(DEFAULT_MACHINES);
+    setAssetTypes(DEFAULT_ASSET_TYPES);
     setPackages(DEFAULT_PACKAGES);
     setSessions([]);
     setTransactions([]);
@@ -576,6 +619,7 @@ export default function App() {
     setSettings(DEFAULT_SETTINGS);
     pushCloudUpdate({
       machines: DEFAULT_MACHINES,
+      assetTypes: DEFAULT_ASSET_TYPES,
       packages: DEFAULT_PACKAGES,
       sessions: [],
       transactions: [],
@@ -629,12 +673,14 @@ export default function App() {
       {/* Main Control Board View */}
       <ControlBoard
         machines={machines}
+        assetTypes={assetTypes}
         sessions={sessions}
         packages={packages}
         queue={queue}
         transactions={transactions}
         nowTimestamp={nowTimestamp}
         settings={settings}
+        isAdminMode={isAdminMode}
         onOpenNewSession={(machineId) => {
           setPreselectedMachineId(machineId);
           setPreselectedQueueItem(undefined);
@@ -665,6 +711,7 @@ export default function App() {
           setPreselectedQueueItem(undefined);
         }}
         availableMachines={availableMachines}
+        assetTypes={assetTypes}
         packages={packages}
         queue={queue}
         preselectedMachineId={preselectedMachineId}
@@ -728,12 +775,17 @@ export default function App() {
         isOpen={settingsModalOpen}
         onClose={() => setSettingsModalOpen(false)}
         machines={machines}
+        assetTypes={assetTypes}
         packages={packages}
         settings={settings}
         onUpdateSettings={updateSettingsState}
         onAddMachine={handleAddMachine}
         onDeleteMachine={handleDeleteMachine}
         onToggleMachineMaintenance={handleToggleMaintenance}
+        onAddAssetType={handleAddAssetType}
+        onUpdateAssetType={handleUpdateAssetType}
+        onToggleAssetTypeActive={handleToggleAssetTypeActive}
+        onDeleteAssetType={handleDeleteAssetType}
         onAddPackage={handleAddPackage}
         onDeletePackage={handleDeletePackage}
         onResetFactory={handleResetFactory}
