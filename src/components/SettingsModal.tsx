@@ -107,7 +107,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   // Admin PIN change state
-  const [editingPin, setEditingPin] = useState(settings.adminPin || '5313');
+  const [editingPin, setEditingPin] = useState(settings.adminPin || '6381');
   const [pinSavedMessage, setPinSavedMessage] = useState(false);
 
   // Auto-select first active asset type when opening Add Machine
@@ -499,7 +499,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               {m.name}
                             </div>
                             <div className="text-[10px] text-slate-400 uppercase truncate">
-                              {resolved.name} • Status:{' '}
+                              Status:{' '}
                               <span
                                 className={`font-bold ${
                                   m.status === 'READY'
@@ -926,6 +926,78 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <span>TAMBAH PAKEJ</span>
                   </button>
                 )}
+              </div>
+
+              {/* AUTOMATIC GRACE PERIOD / MASA BERTENANG CARD */}
+              <div className="p-4 rounded-2xl bg-[#0c121c] border border-emerald-500/40 space-y-3 shadow-lg shadow-emerald-950/20">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-950/80 border border-emerald-500/50 flex items-center justify-center text-emerald-400 shrink-0">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black uppercase text-emerald-400 tracking-wide">
+                          Masa Bertenang Automatik (Bonus Time)
+                        </span>
+                        <span className="text-[9px] font-mono font-black uppercase px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-500/40">
+                          {settings.bufferMinutes ?? 3} Minit Ekstra
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Masa tambahan automatik diberi kepada setiap sesi supaya pelanggan sempat duduk dan ambil kedudukan tanpa rasa rugi masa.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-1 border-t border-slate-800">
+                  <div className="flex justify-between items-center font-mono">
+                    <span className="text-xs text-slate-300 font-bold">
+                      Nilai Tambahan Masa:
+                    </span>
+                    <span className="text-xs font-black text-emerald-300 bg-[#151f2e] px-2.5 py-1 rounded-lg border border-emerald-500/30">
+                      +{(settings.bufferMinutes ?? 3)} Minit (Automatik)
+                    </span>
+                  </div>
+
+                  {/* Preset quick buttons */}
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {[0, 2, 3, 5, 10].map((mins) => {
+                      const isActive = (settings.bufferMinutes ?? 3) === mins;
+                      return (
+                        <button
+                          key={`buf-${mins}`}
+                          type="button"
+                          onClick={() => {
+                            playTapSound(settings.soundEnabled);
+                            onUpdateSettings({
+                              ...settings,
+                              bufferMinutes: mins,
+                            });
+                          }}
+                          className={`py-1.5 px-1 rounded-xl text-xs font-mono font-black uppercase tracking-wider transition-all cursor-pointer border ${
+                            isActive
+                              ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/20'
+                              : 'bg-[#151f2e] text-slate-300 border-slate-700 hover:bg-[#1f2e44] hover:text-white'
+                          }`}
+                        >
+                          {mins === 0 ? 'Tiada (0m)' : `+${mins} Minit`}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Simulation summary */}
+                  <div className="p-2.5 rounded-xl bg-[#151f2e]/80 border border-slate-800 flex items-center justify-between text-xs font-mono">
+                    <span className="text-slate-400">
+                      Contoh (Pakej 20 Minit @ RM10):
+                    </span>
+                    <span className="text-emerald-400 font-bold">
+                      Dikira {20 + (settings.bufferMinutes ?? 3)} Minit Penuh
+                    </span>
+                  </div>
+                </div>
               </div>
 
               {/* Add Package Form */}

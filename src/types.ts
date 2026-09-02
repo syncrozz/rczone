@@ -94,11 +94,12 @@ export interface QueueItem {
 
 export interface AppSettings {
   endingSoonThresholdSeconds: number; // Default 300 (5 minutes)
+  bufferMinutes?: number; // Extra grace period minutes added automatically (default 3 minutes)
   soundEnabled: boolean;
   alarmRepeat: boolean;
   vibrationEnabled: boolean;
   wakeLockEnabled: boolean;
   businessName: string;
   currencySymbol: string;
-  adminPin?: string; // Default '5313'
+  adminPin?: string; // Default '6381'
 }

@@ -55,7 +55,13 @@ export default function App() {
   const [sessions, setSessions] = useState<Session[]>(initialData.sessions);
   const [transactions, setTransactions] = useState<TransactionRecord[]>(initialData.transactions);
   const [queue, setQueue] = useState<QueueItem[]>(initialData.queue);
-  const [settings, setSettings] = useState<AppSettings>(initialData.settings);
+  const [settings, setSettings] = useState<AppSettings>(() => {
+    const s = initialData.settings;
+    if (s.adminPin === '5313' || !s.adminPin) {
+      return { ...s, adminPin: '6381' };
+    }
+    return s;
+  });
   const [customerAlerts, setCustomerAlerts] = useState<CustomerAlert[]>([]);
 
   // Live timer clock
@@ -89,7 +95,7 @@ export default function App() {
   const [transactionsDrawerOpen, setTransactionsDrawerOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
 
-  // Admin Mode state (Protected by PIN 5313)
+  // Admin Mode state (Protected by PIN 6381)
   const [isAdminMode, setIsAdminMode] = useState<boolean>(false);
   const [adminPinModalOpen, setAdminPinModalOpen] = useState<boolean>(false);
   const [pendingAdminAction, setPendingAdminAction] = useState<(() => void) | null>(null);
@@ -183,8 +189,13 @@ export default function App() {
         saveQueue(cloudData.queue);
       }
       if (cloudData.settings !== undefined) {
-        setSettings((prev) => ({ ...prev, ...cloudData.settings }));
-        saveSettings({ ...settings, ...cloudData.settings });
+        let incomingSettings = cloudData.settings;
+        if (incomingSettings.adminPin === '5313' || !incomingSettings.adminPin) {
+          incomingSettings = { ...incomingSettings, adminPin: '6381' };
+          pushCloudUpdate({ settings: incomingSettings });
+        }
+        setSettings((prev) => ({ ...prev, ...incomingSettings }));
+        saveSettings({ ...settings, ...incomingSettings });
       }
       if (cloudData.customerAlerts !== undefined) {
         setCustomerAlerts((prevAlerts) => {
@@ -302,8 +313,10 @@ export default function App() {
     const targetPackage = packages.find((p) => p.id === packageId || p.name === packageId) || packages[0];
     if (!targetMachine || !targetPackage) return;
 
+    const extraBuffer = typeof settings.bufferMinutes === 'number' ? settings.bufferMinutes : 3;
+    const totalDurationMinutes = targetPackage.durationMinutes + extraBuffer;
     const startTime = Date.now();
-    const durationMs = targetPackage.durationMinutes * 60 * 1000;
+    const durationMs = totalDurationMinutes * 60 * 1000;
     const endTime = startTime + durationMs;
 
     const newSessionId = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -313,8 +326,8 @@ export default function App() {
       machineId,
       machineName: targetMachine.name,
       packageId,
-      packageName: targetPackage.name,
-      durationMinutes: targetPackage.durationMinutes,
+      packageName: extraBuffer > 0 ? `${targetPackage.name} (+${extraBuffer}m bertenang)` : targetPackage.name,
+      durationMinutes: totalDurationMinutes,
       price: targetPackage.price,
       customerName: customerName || undefined,
       startTime,
@@ -856,7 +869,7 @@ export default function App() {
         onLockAdmin={() => setIsAdminMode(false)}
       />
 
-      {/* 7. Modal Pengesahan PIN Admin (5313) */}
+      {/* 7. Modal Pengesahan PIN Admin (6381) */}
       <AdminPinModal
         isOpen={adminPinModalOpen}
         onClose={() => {
@@ -864,7 +877,7 @@ export default function App() {
           setPendingAdminAction(null);
         }}
         onSuccess={handleAdminPinSuccess}
-        correctPin={settings.adminPin || '5313'}
+        correctPin={settings.adminPin === '5313' ? '6381' : (settings.adminPin || '6381')}
         soundEnabled={settings.soundEnabled}
         title={pinModalTitle}
         description={pinModalDesc}

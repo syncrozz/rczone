@@ -108,25 +108,25 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
   });
 
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 py-5 sm:py-6 space-y-6">
+    <main className="max-w-7xl mx-auto px-2 sm:px-6 py-3 sm:py-6 space-y-4 sm:space-y-6">
       {/* TIME UP NOTIFICATION BANNER */}
       {timeUpMachines.length > 0 && (
-        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-rose-900/90 via-rose-800 to-rose-900 border border-rose-500/80 text-white shadow-2xl shadow-rose-900/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-pulse">
-          <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-xl bg-rose-950/80 border border-rose-400 flex items-center justify-center font-black text-xl shadow-md shrink-0">
+        <div className="p-3.5 sm:p-5 rounded-2xl bg-gradient-to-r from-rose-900/90 via-rose-800 to-rose-900 border border-rose-500/80 text-white shadow-2xl shadow-rose-900/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-pulse">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-rose-950/80 border border-rose-400 flex items-center justify-center font-black text-lg shadow-md shrink-0">
               🚨
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded bg-rose-950 text-rose-200 border border-rose-500">
+                <span className="text-[9px] font-mono font-black uppercase px-1.5 py-0.5 rounded bg-rose-950 text-rose-200 border border-rose-500">
                   CRITICAL ALERT
                 </span>
-                <h4 className="font-black text-base sm:text-lg tracking-tight">
+                <h4 className="font-black text-sm sm:text-lg tracking-tight truncate">
                   {timeUpMachines.length} Mesin Telah Tamat Masa!
                 </h4>
               </div>
-              <p className="text-xs text-rose-100/90 font-mono mt-0.5">
-                {timeUpMachines.map((t) => t.machine.name).join(', ')} — Sila tamatkan atau sambung sesi operasi.
+              <p className="text-xs text-rose-100/90 font-mono mt-0.5 truncate">
+                {timeUpMachines.map((t) => t.machine.name).join(', ')}
               </p>
             </div>
           </div>
@@ -139,7 +139,7 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
                   playTapSound(settings.soundEnabled);
                   onCompleteSession(timeUpMachines[0].activeSession!);
                 }}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-rose-900 font-black text-xs uppercase font-mono shadow-md transition-transform active:scale-95 cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white hover:bg-slate-100 text-rose-900 font-black text-xs uppercase font-mono shadow-md transition-transform active:scale-95 cursor-pointer"
               >
                 Tamatkan {timeUpMachines[0].machine.name}
               </button>
@@ -149,9 +149,9 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
       )}
 
       {/* RACE CONTROL FILTER BAR */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-[#101723] p-3 sm:p-4 rounded-2xl border border-slate-800 shadow-xl">
-        {/* Status Tab Filters */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 bg-[#101723] p-2.5 sm:p-4 rounded-2xl border border-slate-800 shadow-xl">
+        {/* ROW 1 (or Left Group): Status Tab Navigation Filters */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none min-w-0">
           <button
             type="button"
             id="filter-all"
@@ -159,7 +159,7 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
               playTapSound(settings.soundEnabled);
               setFilter('ALL');
             }}
-            className={`px-3.5 py-2 rounded-xl text-xs font-chakra font-black transition-all whitespace-nowrap cursor-pointer uppercase tracking-wider flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-chakra font-black transition-all whitespace-nowrap cursor-pointer uppercase tracking-wider flex items-center gap-1.5 shrink-0 ${
               filter === 'ALL'
                 ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
                 : 'bg-[#151f2e] text-slate-300 hover:text-white hover:bg-[#1a283c] border border-slate-800'
@@ -178,7 +178,7 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
               playTapSound(settings.soundEnabled);
               setFilter('READY');
             }}
-            className={`px-3.5 py-2 rounded-xl text-xs font-chakra font-black flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer uppercase tracking-wider border ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-chakra font-black flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer uppercase tracking-wider border shrink-0 ${
               filter === 'READY'
                 ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/20'
                 : 'bg-[#151f2e] text-emerald-400 border-emerald-500/30 hover:bg-emerald-950/40'
@@ -198,7 +198,7 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
               playTapSound(settings.soundEnabled);
               setFilter('RUNNING');
             }}
-            className={`px-3.5 py-2 rounded-xl text-xs font-chakra font-black flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer uppercase tracking-wider border ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-chakra font-black flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer uppercase tracking-wider border shrink-0 ${
               filter === 'RUNNING'
                 ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/20'
                 : 'bg-[#151f2e] text-amber-400 border-amber-500/30 hover:bg-amber-950/40'
@@ -219,7 +219,7 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
                 playTapSound(settings.soundEnabled);
                 setFilter('ENDING_SOON');
               }}
-              className={`px-3.5 py-2 rounded-xl text-xs font-chakra font-black flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer uppercase tracking-wider border ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-chakra font-black flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer uppercase tracking-wider border shrink-0 ${
                 filter === 'ENDING_SOON'
                   ? 'bg-amber-400 text-slate-950 border-amber-300'
                   : 'bg-amber-950/40 text-amber-300 border-amber-500/50 animate-pulse'
@@ -238,7 +238,7 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
                 playTapSound(settings.soundEnabled);
                 setFilter('TIME_UP');
               }}
-              className={`px-3.5 py-2 rounded-xl text-xs font-chakra font-black flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer uppercase tracking-wider border ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-chakra font-black flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer uppercase tracking-wider border shrink-0 ${
                 filter === 'TIME_UP'
                   ? 'bg-rose-600 text-white border-rose-500'
                   : 'bg-rose-950/50 text-rose-300 border-rose-600/60 animate-bounce'
@@ -250,16 +250,16 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
           )}
         </div>
 
-        {/* Right side: Search Input & Quick Asset Settings Button */}
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1 sm:w-60">
-            <Search className="w-4 h-4 text-amber-400/80 absolute left-3.5 top-3" />
+        {/* ROW 2 (or Right Group): Search Input & Quick Asset Settings Button */}
+        <div className="flex items-center gap-2 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-800/80">
+          <div className="relative flex-1 sm:w-64 min-w-0">
+            <Search className="w-3.5 h-3.5 text-amber-400/80 absolute left-3 top-2.5" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cari mesin / ID unit..."
-              className="w-full pl-10 pr-3 py-2 rounded-xl border border-slate-700/80 bg-[#0c121c] text-white placeholder-slate-500 text-xs font-mono focus:border-amber-400 focus:ring-1 focus:ring-amber-400/40 focus:outline-none"
+              className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-slate-700/80 bg-[#0c121c] text-white placeholder-slate-500 text-xs font-mono focus:border-amber-400 focus:ring-1 focus:ring-amber-400/40 focus:outline-none"
             />
           </div>
 
@@ -270,7 +270,7 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
               playTapSound(settings.soundEnabled);
               onOpenSettings();
             }}
-            className="px-3.5 py-2 rounded-xl bg-[#151f2e] hover:bg-[#1f2e44] border border-amber-500/30 hover:border-amber-400 text-amber-400 text-xs font-chakra font-black uppercase tracking-wider flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0 shadow-xs"
+            className="px-3 py-1.5 rounded-xl bg-[#151f2e] hover:bg-[#1f2e44] border border-amber-500/30 hover:border-amber-400 text-amber-400 text-xs font-chakra font-black uppercase tracking-wider flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0 shadow-xs whitespace-nowrap"
             title="Tambah atau Urus Koleksi Aset & Mesin"
           >
             <Boxes className="w-3.5 h-3.5 text-amber-400" />
@@ -304,7 +304,23 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="flex flex-col gap-2.5">
+          {/* Operational Table Header (Desktop & Large screens) */}
+          <div className="hidden lg:flex items-center justify-between px-4 py-2 bg-[#0d1420] rounded-xl border border-slate-800/80 text-[10px] font-mono font-black text-slate-400 uppercase tracking-wider">
+            <div className="flex items-center gap-4">
+              <span className="w-[76px] text-center">ID UNIT</span>
+              <span className="w-52 xl:w-60">UNIT / MODEL</span>
+              <span className="w-32 xl:w-36">KATEGORI</span>
+            </div>
+            <div className="flex-1 px-4">
+              <span>STATUS / LIVE TELEMETRI</span>
+            </div>
+            <div className="w-56 text-right pr-2">
+              <span>TINDAKAN KAWALAN</span>
+            </div>
+          </div>
+
+          {/* 1 Column x Many Rows List */}
           {filteredMachines.map(({ machine, activeSession }) => (
             <MachineCard
               key={machine.id}

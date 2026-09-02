@@ -15,7 +15,7 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
-  correctPin = '5313',
+  correctPin = '6381',
   title = 'Akses Mod Admin',
   description = 'Sila masukkan 4-digit PIN keselamatan untuk aktifkan mod suntingan admin.',
 }) => {

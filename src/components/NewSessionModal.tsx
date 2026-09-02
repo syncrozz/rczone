@@ -267,6 +267,11 @@ export const NewSessionModal: React.FC<NewSessionModalProps> = ({
                       </div>
                       <div className="text-[11px] font-mono text-slate-400 font-bold mt-0.5">
                         {pkg.durationMinutes} Minit
+                        {(settings.bufferMinutes ?? 3) > 0 && (
+                          <span className="ml-1 text-emerald-400 font-black">
+                            (+{settings.bufferMinutes ?? 3}m)
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="mt-2 text-base font-mono font-black text-amber-400">
@@ -311,8 +316,13 @@ export const NewSessionModal: React.FC<NewSessionModalProps> = ({
                   TEMPOH OPERASI
                 </span>
                 <span className="text-sm font-black text-amber-400">
-                  {selectedPkg.durationMinutes} MINIT
+                  {selectedPkg.durationMinutes + (settings.bufferMinutes ?? 3)} MINIT
                 </span>
+                {(settings.bufferMinutes ?? 3) > 0 && (
+                  <span className="text-[10px] text-emerald-400 font-mono block">
+                    ({selectedPkg.durationMinutes}m + {settings.bufferMinutes ?? 3}m bertenang)
+                  </span>
+                )}
               </div>
             </div>
           )}
