@@ -42,6 +42,7 @@ interface ControlBoardProps {
   onOpenTransactions: () => void;
   onStartFromQueue: (queueItem: QueueItem) => void;
   onOpenQrModal?: (session: Session, machine: Machine) => void;
+  onOpenSupport?: () => void;
 }
 
 export const ControlBoard: React.FC<ControlBoardProps> = ({
@@ -66,6 +67,7 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
   onOpenTransactions,
   onStartFromQueue,
   onOpenQrModal,
+  onOpenSupport,
 }) => {
   const [filter, setFilter] = useState<'ALL' | 'READY' | 'RUNNING' | 'ENDING_SOON' | 'TIME_UP' | 'MAINTENANCE'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -552,24 +554,57 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
       </div>
 
       {/* FOOTER TELEMETRY STATUS */}
-      <footer className="mt-8 pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row justify-between items-center text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider gap-2">
+      <footer className="mt-8 pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row justify-between items-center text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider gap-3">
         <div className="flex items-center gap-2">
-          <span>SYSTEM: <strong className="text-emerald-400">ONLINE</strong></span>
-          <span>&bull;</span>
-          <span>DATABASE: <strong className="text-amber-400">SYNCED</strong></span>
-          <span>&bull;</span>
-          <span>SES V4.3 MOTORSPORT</span>
-        </div>
-        <div>
-          Engineered by{' '}
+          <span>
+            Developed by{' '}
+            <a
+              href="https://www.syncrozz.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-amber-400 hover:text-amber-300 hover:underline transition-colors font-extrabold"
+            >
+              Syncrozz
+            </a>
+          </span>
           <a
-            href="https://sites.google.com/view/khairi-innovation/"
+            href="https://wa.me/60145313756"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-amber-400 hover:text-amber-300 hover:underline transition-colors font-extrabold"
+            className="inline-flex items-center justify-center opacity-85 hover:opacity-100 transition-opacity"
+            title="Hubungi WhatsApp Syncrozz"
+            aria-label="WhatsApp Syncrozz"
           >
-            Syncrozz
+            <img
+              src="https://raw.githubusercontent.com/syncrozz/syncrozz-assets/main/logo/MAIN/Logo%20Whatapp%20v2.png"
+              alt="WhatsApp"
+              className="w-5 h-5 object-contain"
+            />
           </a>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span>SYSTEM: <strong className="text-emerald-400">ONLINE</strong></span>
+            <span>&bull;</span>
+            <span>DATABASE: <strong className="text-amber-400">SYNCED</strong></span>
+            <span>&bull;</span>
+            <span>SES V4.3 MOTORSPORT</span>
+          </div>
+          {onOpenSupport && (
+            <>
+              <span>&bull;</span>
+              <button
+                type="button"
+                id="btn-footer-support"
+                onClick={onOpenSupport}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/5 text-white/50 hover:text-white/80 text-[11px] font-normal normal-case transition-colors cursor-pointer"
+                title="Sokong Inovasi Ini"
+              >
+                <span>Support</span>
+                <span className="text-rose-400/60">❤️</span>
+              </button>
+            </>
+          )}
         </div>
       </footer>
 

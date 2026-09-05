@@ -11,6 +11,7 @@ import { AdminPinModal } from './components/AdminPinModal';
 import { OfflineBanner } from './components/OfflineBanner';
 import { PwaInstallPrompt } from './components/PwaInstallPrompt';
 import { SessionQrModal } from './components/SessionQrModal';
+import { SupportModal } from './components/SupportModal';
 import { CustomerLiveView } from './components/CustomerLiveView';
 import { generateUniquePublicToken, parseCustomerLiveRoute, CustomerLiveRouteResult } from './utils/token';
 import { Machine, RidePackage, Session, TransactionRecord, QueueItem, AppSettings, AssetType, CustomerAlert } from './types';
@@ -93,6 +94,9 @@ export default function App() {
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [activeQrSession, setActiveQrSession] = useState<Session | null>(null);
   const [activeQrMachine, setActiveQrMachine] = useState<Machine | null>(null);
+
+  // Support Modal
+  const [supportModalOpen, setSupportModalOpen] = useState(false);
 
   const [completionModalOpen, setCompletionModalOpen] = useState(false);
   const [activeCompletingSession, setActiveCompletingSession] = useState<Session | null>(null);
@@ -817,6 +821,7 @@ export default function App() {
         onOpenTransactions={() => setTransactionsDrawerOpen(true)}
         onStartFromQueue={handleStartFromQueue}
         onOpenQrModal={handleOpenQrModal}
+        onOpenSupport={() => setSupportModalOpen(true)}
       />
 
       {/* 1. Modal Sesi Baru */}
@@ -941,7 +946,13 @@ export default function App() {
         settings={settings}
       />
 
-      {/* 9. PWA Offline Status Toast Indicator & PWA Install Banner */}
+      {/* 9. Modal Support (Sumbangan Sukarela) */}
+      <SupportModal
+        isOpen={supportModalOpen}
+        onClose={() => setSupportModalOpen(false)}
+      />
+
+      {/* 10. PWA Offline Status Toast Indicator & PWA Install Banner */}
       <OfflineBanner />
       <PwaInstallPrompt />
     </div>

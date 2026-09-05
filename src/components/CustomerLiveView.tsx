@@ -24,6 +24,7 @@ import { AssetIcon } from './AssetIcon';
 import { notifyCustomerAlarmStopped, subscribeToCloudSync } from '../services/firebaseSync';
 import { parseCustomerLiveRoute, LegacyCustomerParams } from '../utils/token';
 import { getLiveSessionUrl } from '../utils/qr';
+import { SupportModal } from './SupportModal';
 
 interface CustomerLiveViewProps {
   token?: string;
@@ -203,6 +204,7 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({
   const [stopSuccessMessage, setStopSuccessMessage] = useState<string | null>(null);
   const [showShareToast, setShowShareToast] = useState<boolean>(false);
   const [showEarlyFinishConfirm, setShowEarlyFinishConfirm] = useState<boolean>(false);
+  const [supportModalOpen, setSupportModalOpen] = useState<boolean>(false);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const alarmIntervalRef = useRef<number | null>(null);
@@ -869,16 +871,38 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({
           Kekalkan skrin ini dibuka. Sistem keselamatan akan memaklumkan kaunter apabila penggera dihentikan.
         </p>
 
-        {onBackToDashboard && (
+        <div className="flex items-center justify-center gap-3 pt-0.5">
           <button
             type="button"
-            onClick={onBackToDashboard}
-            className="text-[11px] font-mono text-amber-400/80 hover:text-amber-300 underline cursor-pointer"
+            id="btn-customer-footer-support"
+            onClick={() => setSupportModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/5 text-white/50 hover:text-white/80 text-[11px] font-normal normal-case transition-colors cursor-pointer"
+            title="Sokong Inovasi Ini"
           >
-            Kembali ke Dashboard Pengurusan Admin
+            <span>Support</span>
+            <span className="text-rose-400/60">❤️</span>
           </button>
-        )}
+
+          {onBackToDashboard && (
+            <>
+              <span className="text-slate-700">&bull;</span>
+              <button
+                type="button"
+                onClick={onBackToDashboard}
+                className="text-[11px] font-mono text-amber-400/80 hover:text-amber-300 underline cursor-pointer"
+              >
+                Kembali ke Dashboard Pengurusan Admin
+              </button>
+            </>
+          )}
+        </div>
       </footer>
+
+      {/* Support Popup Modal */}
+      <SupportModal
+        isOpen={supportModalOpen}
+        onClose={() => setSupportModalOpen(false)}
+      />
     </div>
   );
 };
