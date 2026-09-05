@@ -102,7 +102,17 @@ export function parseCustomerLiveRoute(): CustomerLiveRouteResult {
   if (pathMatch && pathMatch[1]) {
     return {
       isCustomerView: true,
-      token: pathMatch[1],
+      token: decodeURIComponent(pathMatch[1]).trim(),
+      isLegacy: false,
+    };
+  }
+
+  // 1b. Direct /live or /live/ with no token - show customer view empty/not-found state
+  const cleanPath = pathname.replace(/\/+$/, '').toLowerCase();
+  if (cleanPath === '/live') {
+    return {
+      isCustomerView: true,
+      token: '',
       isLegacy: false,
     };
   }
@@ -112,7 +122,7 @@ export function parseCustomerLiveRoute(): CustomerLiveRouteResult {
   if (hashMatch && hashMatch[1]) {
     return {
       isCustomerView: true,
-      token: hashMatch[1],
+      token: decodeURIComponent(hashMatch[1]).trim(),
       isLegacy: false,
     };
   }

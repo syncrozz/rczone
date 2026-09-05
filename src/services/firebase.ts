@@ -4,14 +4,16 @@ import { getAuth, Auth } from 'firebase/auth';
 import { getAnalytics, isSupported, Analytics } from 'firebase/analytics';
 import appletConfig from '../../firebase-applet-config.json';
 
+const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as unknown as { env?: Record<string, string> }).env : undefined;
+
 export const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || appletConfig.apiKey || "AIzaSyAILrcL4QlS-EwpitezwRKzxq9dK7B_Wvw",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || appletConfig.authDomain || "syncrozz-platform.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || appletConfig.projectId || "syncrozz-platform",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || appletConfig.storageBucket || "syncrozz-platform.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || appletConfig.messagingSenderId || "165207391688",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || appletConfig.appId || "1:165207391688:web:e33d816413e8a927c4d4fd",
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || appletConfig.measurementId || "G-L8TM5MX4YD",
+  apiKey: metaEnv?.VITE_FIREBASE_API_KEY || appletConfig.apiKey || "AIzaSyAILrcL4QlS-EwpitezwRKzxq9dK7B_Wvw",
+  authDomain: metaEnv?.VITE_FIREBASE_AUTH_DOMAIN || appletConfig.authDomain || "syncrozz-platform.firebaseapp.com",
+  projectId: metaEnv?.VITE_FIREBASE_PROJECT_ID || appletConfig.projectId || "syncrozz-platform",
+  storageBucket: metaEnv?.VITE_FIREBASE_STORAGE_BUCKET || appletConfig.storageBucket || "syncrozz-platform.firebasestorage.app",
+  messagingSenderId: metaEnv?.VITE_FIREBASE_MESSAGING_SENDER_ID || appletConfig.messagingSenderId || "165207391688",
+  appId: metaEnv?.VITE_FIREBASE_APP_ID || appletConfig.appId || "1:165207391688:web:e33d816413e8a927c4d4fd",
+  measurementId: metaEnv?.VITE_FIREBASE_MEASUREMENT_ID || appletConfig.measurementId || "G-L8TM5MX4YD",
 };
 
 let app: FirebaseApp | null = null;

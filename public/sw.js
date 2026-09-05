@@ -80,12 +80,19 @@ self.addEventListener('fetch', (event) => {
   if (request.mode === 'navigate' || request.destination === 'document') {
     event.respondWith(
       fetch(request)
-        .then((networkResponse) => {
+        .then(async (networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const responseClone = networkResponse.clone();
             caches.open(STATIC_CACHE).then((cache) => {
               cache.put(request, responseClone);
             });
+            return networkResponse;
+          }
+          // If server returns 404 for an SPA route like /live/:token, fallback to /index.html
+          if (networkResponse && networkResponse.status === 404 && url.pathname.startsWith('/live')) {
+            const cachedIndex = await caches.match('/index.html');
+            if (cachedIndex) return cachedIndex;
+            return fetch('/index.html');
           }
           return networkResponse;
         })

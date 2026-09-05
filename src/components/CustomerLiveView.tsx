@@ -126,7 +126,7 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsResolving(false);
-    }, 1200);
+    }, 2500);
     return () => clearTimeout(timer);
   }, []);
 
@@ -134,7 +134,7 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({
     const allSessions = propSessions && propSessions.length > 0 ? propSessions : internalSessions;
 
     if (activeToken) {
-      const clean = activeToken.trim().toLowerCase();
+      const clean = activeToken.trim().toLowerCase().replace(/^[#/]+|[#/]+$/g, '');
 
       // 1. Direct match with publicSessionToken
       const byToken = allSessions.find((s) => s.publicSessionToken?.toLowerCase() === clean);
