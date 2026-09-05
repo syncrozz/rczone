@@ -23,6 +23,55 @@ export function formatDateFull(timestamp: number): string {
   });
 }
 
+export function getDateKey(timestampOrDate: number | Date): string {
+  const d = typeof timestampOrDate === 'number' ? new Date(timestampOrDate) : timestampOrDate;
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function isSameDay(t1: number, t2: number): boolean {
+  return getDateKey(t1) === getDateKey(t2);
+}
+
+export function isToday(timestamp: number): boolean {
+  return isSameDay(timestamp, Date.now());
+}
+
+export function isYesterday(timestamp: number): boolean {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return isSameDay(timestamp, yesterday.getTime());
+}
+
+export function isWithinDays(timestamp: number, daysCount: number): boolean {
+  const now = new Date();
+  const start = new Date();
+  start.setDate(now.getDate() - daysCount + 1);
+  start.setHours(0, 0, 0, 0);
+  return timestamp >= start.getTime();
+}
+
+export function formatDateShort(timestamp: number): string {
+  const d = new Date(timestamp);
+  return d.toLocaleDateString('ms-MY', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+export function formatDateHeading(timestamp: number): string {
+  if (isToday(timestamp)) {
+    return `Hari Ini (${formatDateShort(timestamp)})`;
+  }
+  if (isYesterday(timestamp)) {
+    return `Semalam (${formatDateShort(timestamp)})`;
+  }
+  return formatDateShort(timestamp);
+}
+
 export function calculateSessionTime(
   session: Session,
   nowTimestamp: number

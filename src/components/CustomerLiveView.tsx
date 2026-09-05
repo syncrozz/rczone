@@ -12,40 +12,191 @@ import {
   ExternalLink,
   ShieldCheck,
   RefreshCw,
-  PhoneCall,
   Hand,
   Check,
+  PauseCircle,
+  HelpCircle,
 } from 'lucide-react';
+import { Session, Machine, AppSettings } from '../types';
 import { formatClockTime, formatTimeRemaining } from '../utils/format';
 import { resolveAssetType, loadInitialData } from '../utils/storage';
-import { notifyCustomerAlarmStopped } from '../services/firebaseSync';
+import { AssetIcon } from './AssetIcon';
+import { notifyCustomerAlarmStopped, subscribeToCloudSync } from '../services/firebaseSync';
+import { parseCustomerLiveRoute, LegacyCustomerParams } from '../utils/token';
+import { getLiveSessionUrl } from '../utils/qr';
 
 interface CustomerLiveViewProps {
+  token?: string;
+  sessions?: Session[];
+  machines?: Machine[];
+  settings?: AppSettings;
+  legacyParams?: LegacyCustomerParams;
   onBackToDashboard?: () => void;
 }
 
-export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDashboard }) => {
-  // Parse query parameters
-  const searchParams = useMemo(() => {
-    if (typeof window === 'undefined') return new URLSearchParams();
-    return new URLSearchParams(window.location.search);
+export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({
+  token: propToken,
+  sessions: propSessions,
+  machines: propMachines,
+  settings: propSettings,
+  legacyParams: propLegacyParams,
+  onBackToDashboard,
+}) => {
+  // 1. Detect route information if not supplied by props
+  const routeInfo = useMemo(() => {
+    return parseCustomerLiveRoute();
   }, []);
 
-  const sessionId = searchParams.get('session_id') || 'sess_demo';
-  const machineId = searchParams.get('machine_id') || 'm_default';
-  const machineName = searchParams.get('machine_name') || 'Excavator EX-01';
-  const machineType = searchParams.get('machine_type') || 'excavator';
-  const customerName = searchParams.get('customer') || 'Pelanggan';
-  const packageName = searchParams.get('pkg') || 'Sesi Standard (20 Minit)';
-  const durationMinutes = parseInt(searchParams.get('duration') || '20', 10);
-  const price = parseFloat(searchParams.get('price') || '10');
-  const startTime = parseInt(searchParams.get('start') || String(Date.now()), 10);
-  const rawEndTime = parseInt(searchParams.get('end') || String(Date.now() + durationMinutes * 60 * 1000), 10);
-  const businessName = searchParams.get('biz') || 'FUN RIDE RC ZONE';
+  const activeToken = propToken || routeInfo.token || '';
+  const legacyParams = propLegacyParams || routeInfo.legacyParams;
+
+  // 2. Local fallback state in case rendered in isolation / direct browser tab
+  const [internalSessions, setInternalSessions] = useState<Session[]>(() => {
+    if (propSessions && propSessions.length > 0) return propSessions;
+    try {
+      return loadInitialData().sessions || [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [internalMachines, setInternalMachines] = useState<Machine[]>(() => {
+    if (propMachines && propMachines.length > 0) return propMachines;
+    try {
+      return loadInitialData().machines || [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [internalSettings, setInternalSettings] = useState<AppSettings>(() => {
+    if (propSettings) return propSettings;
+    try {
+      return loadInitialData().settings;
+    } catch {
+      return {
+        businessName: 'FUN RIDE RC ZONE',
+        adminPin: '6381',
+        bufferMinutes: 3,
+        soundEnabled: true,
+        alarmVolume: 1,
+        alarmRepeat: 3,
+        vibrationEnabled: true,
+        wakeLockEnabled: true,
+        endingSoonThresholdSeconds: 60,
+        currencySymbol: 'RM',
+      };
+    }
+  });
+
+  // Keep internal state synced when props change
+  useEffect(() => {
+    if (propSessions && propSessions.length > 0) {
+      setInternalSessions(propSessions);
+    }
+  }, [propSessions]);
+
+  useEffect(() => {
+    if (propMachines && propMachines.length > 0) {
+      setInternalMachines(propMachines);
+    }
+  }, [propMachines]);
+
+  useEffect(() => {
+    if (propSettings) {
+      setInternalSettings(propSettings);
+    }
+  }, [propSettings]);
+
+  // Connect directly to Firebase Cloud Sync if opened in isolation or propSessions is empty
+  useEffect(() => {
+    const unsubscribe = subscribeToCloudSync((cloudData) => {
+      if (cloudData.sessions) setInternalSessions(cloudData.sessions);
+      if (cloudData.machines) setInternalMachines(cloudData.machines);
+      if (cloudData.settings) setInternalSettings((prev) => ({ ...prev, ...(cloudData.settings || {}) }));
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // 3. Resolve active session from public token or legacy parameters
+  const [isResolving, setIsResolving] = useState<boolean>(true);
+
+  // Grace period timer for cloud connection on direct mobile page load
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsResolving(false);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const resolvedSession = useMemo<Session | null>(() => {
+    const allSessions = propSessions && propSessions.length > 0 ? propSessions : internalSessions;
+
+    if (activeToken) {
+      const clean = activeToken.trim().toLowerCase();
+
+      // 1. Direct match with publicSessionToken
+      const byToken = allSessions.find((s) => s.publicSessionToken?.toLowerCase() === clean);
+      if (byToken) return byToken;
+
+      // 2. Direct match with session ID
+      const byId = allSessions.find((s) => s.id.toLowerCase() === clean);
+      if (byId) return byId;
+
+      // 3. Match suffix of session ID (e.g. sess_1788606065429_tw74i -> tw74i)
+      const bySuffix = allSessions.find((s) => s.id.toLowerCase().endsWith(clean));
+      if (bySuffix) return bySuffix;
+    }
+
+    // 4. Fallback for legacy query string URLs (backward compatibility)
+    if (legacyParams && legacyParams.sessionId) {
+      return {
+        id: legacyParams.sessionId,
+        publicSessionToken: activeToken || legacyParams.sessionId.slice(-6),
+        machineId: legacyParams.machineId,
+        machineName: legacyParams.machineName,
+        packageId: 'legacy_pkg',
+        packageName: legacyParams.packageName,
+        durationMinutes: legacyParams.durationMinutes,
+        price: legacyParams.price,
+        customerName: legacyParams.customerName,
+        startTime: legacyParams.startTime,
+        endTime: legacyParams.endTime,
+        accumulatedPauseMs: legacyParams.accumulatedPauseMs,
+        isPaused: legacyParams.isPaused,
+        status: 'ACTIVE',
+      };
+    }
+
+    return null;
+  }, [propSessions, internalSessions, activeToken, legacyParams]);
+
+  // Once session is found, dismiss resolving indicator immediately
+  useEffect(() => {
+    if (resolvedSession) {
+      setIsResolving(false);
+    }
+  }, [resolvedSession]);
+
+  const activeMachine = useMemo(() => {
+    const allMachines = propMachines && propMachines.length > 0 ? propMachines : internalMachines;
+    if (!resolvedSession) return null;
+    return allMachines.find((m) => m.id === resolvedSession.machineId) || null;
+  }, [propMachines, internalMachines, resolvedSession]);
+
+  const businessName = propSettings?.businessName || internalSettings.businessName || 'FUN RIDE RC ZONE';
+  const machineName = resolvedSession?.machineName || activeMachine?.name || legacyParams?.machineName || 'RC Machine';
+  const machineType = activeMachine?.type || legacyParams?.machineType || 'excavator';
+  const customerName = resolvedSession?.customerName || legacyParams?.customerName || 'Pelanggan';
+  const packageName = resolvedSession?.packageName || legacyParams?.packageName || 'Sesi Standard';
+  const durationMinutes = resolvedSession?.durationMinutes || legacyParams?.durationMinutes || 20;
+  const startTime = resolvedSession?.startTime || legacyParams?.startTime || Date.now();
+  const rawEndTime = resolvedSession?.endTime || legacyParams?.endTime || startTime + durationMinutes * 60 * 1000;
+  const isPaused = Boolean(resolvedSession?.isPaused);
+  const pausedAt = resolvedSession?.pausedAt;
+  const sessionStatus = resolvedSession?.status || 'ACTIVE';
 
   const [now, setNow] = useState<number>(Date.now());
-  // Penggera telefon adalah AUTOMATIK AKTIF secara lalai
-  const [audioEnabled, setAudioEnabled] = useState<boolean>(true);
   const [audioContextReady, setAudioContextReady] = useState<boolean>(false);
   const [isAlarmPlaying, setIsAlarmPlaying] = useState<boolean>(false);
   const [hasStoppedAlarm, setHasStoppedAlarm] = useState<boolean>(false);
@@ -69,7 +220,9 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
   const unlockAudioContext = useCallback(() => {
     try {
       if (!audioCtxRef.current) {
-        const AudioCtxClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        const AudioCtxClass =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
         if (AudioCtxClass) {
           audioCtxRef.current = new AudioCtxClass();
         }
@@ -103,21 +256,24 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
     };
   }, [unlockAudioContext]);
 
-  // Calculate live remaining time
+  // Calculate live remaining time accounting for pause state
+  const effectiveNow = isPaused && pausedAt ? pausedAt : now;
   const totalDurationMs = Math.max(1000, durationMinutes * 60 * 1000);
-  const elapsedMs = Math.max(0, now - startTime);
-  const remainingMs = Math.max(0, rawEndTime - now);
+  const elapsedMs = Math.max(0, effectiveNow - startTime);
+  const remainingMs = Math.max(0, rawEndTime - effectiveNow);
   const remainingSeconds = Math.ceil(remainingMs / 1000);
   const progressPercent = Math.min(100, Math.max(0, (elapsedMs / totalDurationMs) * 100));
 
-  const isTimeUp = now >= rawEndTime;
-  const isEndingSoon = !isTimeUp && remainingSeconds <= 60;
+  const isTimeUp = !isPaused && now >= rawEndTime && sessionStatus !== 'COMPLETED';
+  const isEndingSoon = !isTimeUp && !isPaused && remainingSeconds <= 60 && sessionStatus === 'ACTIVE';
 
   // Sound Synthesizer: Loud Motorsport Alarm Siren
   const playSirenChime = useCallback(() => {
     try {
       if (!audioCtxRef.current) {
-        const AudioCtxClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        const AudioCtxClass =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
         if (AudioCtxClass) {
           audioCtxRef.current = new AudioCtxClass();
         }
@@ -130,7 +286,7 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
       }
 
       // Motorsport energetic siren fanfare (D5, F#5, A5, D6, A5, D6)
-      const melody = [587.33, 739.99, 880.00, 1174.66, 880.00, 1174.66];
+      const melody = [587.33, 739.99, 880.0, 1174.66, 880.0, 1174.66];
       melody.forEach((freq, idx) => {
         const noteStart = ctx.currentTime + idx * 0.14;
         const osc = ctx.createOscillator();
@@ -156,7 +312,7 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
 
   // Trigger Alarm when time hits 0
   useEffect(() => {
-    if (isTimeUp && !alarmFiredRef.current && !hasStoppedAlarm) {
+    if (isTimeUp && !alarmFiredRef.current && !hasStoppedAlarm && sessionStatus === 'ACTIVE') {
       alarmFiredRef.current = true;
       setIsAlarmPlaying(true);
 
@@ -174,7 +330,7 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
         } catch (e) {}
       }
     }
-  }, [isTimeUp, hasStoppedAlarm, playSirenChime]);
+  }, [isTimeUp, hasStoppedAlarm, sessionStatus, playSirenChime]);
 
   // Customer Action: STOP ALARM (Masa Tamat)
   const handleStopAlarm = async () => {
@@ -186,14 +342,15 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
     setHasStoppedAlarm(true);
     setStopSuccessMessage('✅ Penggera telah dimatikan. Notifikasi dihantar ke kaunter Admin.');
 
-    // Kirim notifikasi kepada admin secara masa nyata melalui Firestore Sync
-    await notifyCustomerAlarmStopped(
-      sessionId,
-      machineId,
-      machineName,
-      customerName,
-      'TIME_UP_STOPPED'
-    );
+    if (resolvedSession) {
+      await notifyCustomerAlarmStopped(
+        resolvedSession.id,
+        resolvedSession.machineId,
+        resolvedSession.machineName,
+        resolvedSession.customerName || customerName,
+        'TIME_UP_STOPPED'
+      );
+    }
   };
 
   // Customer Action: SELESAIKAN SESI LEBIH AWAL
@@ -207,20 +364,21 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
     setShowEarlyFinishConfirm(false);
     setStopSuccessMessage('🏁 Anda telah menamatkan sesi lebih awal. Sila pulangkan alat kawalan kepada staf.');
 
-    // Kirim notifikasi kepada admin
-    await notifyCustomerAlarmStopped(
-      sessionId,
-      machineId,
-      machineName,
-      customerName,
-      'EARLY_STOPPED'
-    );
+    if (resolvedSession) {
+      await notifyCustomerAlarmStopped(
+        resolvedSession.id,
+        resolvedSession.machineId,
+        resolvedSession.machineName,
+        resolvedSession.customerName || customerName,
+        'EARLY_STOPPED'
+      );
+    }
   };
 
-  // Native Web Share or Copy Link
+  // Native Web Share or Copy Link (Copies short live URL)
   const handleShare = async () => {
     if (typeof window === 'undefined') return;
-    const url = window.location.href;
+    const url = resolvedSession ? getLiveSessionUrl(resolvedSession) : window.location.href;
     const shareData = {
       title: `${businessName} - Live Sesi Tracker`,
       text: `Pantau sesi mainan RC ${machineName} (${customerName}) secara langsung:`,
@@ -242,7 +400,7 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
     }
   };
 
-  const getMachineEmoji = () => {
+  const getMachineIcon = () => {
     try {
       const initial = loadInitialData();
       const resolved = resolveAssetType(machineType, initial.assetTypes);
@@ -252,15 +410,105 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
     }
   };
 
+  // 4. Loading / Resolving View (Clean high-tech skeleton)
+  if (isResolving && !resolvedSession) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#0b121e] via-[#080d16] to-[#05080e] text-slate-100 flex flex-col items-center justify-center p-6 text-center select-none font-sans">
+        <div className="w-16 h-16 rounded-3xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 mb-4 animate-pulse shadow-lg shadow-amber-500/20">
+          <Radio className="w-8 h-8 animate-spin" />
+        </div>
+        <span className="text-xs font-mono font-black uppercase tracking-widest text-amber-400 block mb-1">
+          {businessName}
+        </span>
+        <h2 className="text-xl font-chakra font-black uppercase text-white tracking-wide mb-2">
+          Menyambung ke Live Telemetri...
+        </h2>
+        <p className="text-xs font-mono text-slate-400 max-w-xs leading-relaxed">
+          Menyegerakkan data sesi masa nyata dengan kaunter RC Zone. Sila tunggu sebentar.
+        </p>
+      </div>
+    );
+  }
+
+  // 5. Not Found / Expired Session View
+  if (!resolvedSession) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#140b10] via-[#0e080c] to-[#080406] text-slate-100 flex flex-col justify-between p-6 select-none font-sans">
+        <header className="w-full max-w-md mx-auto flex items-center justify-between pb-3 border-b border-slate-800">
+          <span className="text-xs font-mono font-black uppercase tracking-widest text-amber-400">
+            {businessName}
+          </span>
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+            DISCONNECTED
+          </span>
+        </header>
+
+        <main className="w-full max-w-md mx-auto text-center py-10 space-y-4">
+          <div className="w-16 h-16 rounded-3xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 mx-auto shadow-lg shadow-rose-500/10">
+            <AlertTriangle className="w-8 h-8" />
+          </div>
+
+          <h2 className="text-2xl font-chakra font-black uppercase text-white tracking-wide">
+            Sesi Tidak Ditemui
+          </h2>
+
+          <div className="p-4 rounded-2xl bg-[#110d13] border border-rose-500/30 text-xs font-mono space-y-2">
+            <p className="text-rose-300 font-bold">
+              Pautan sesi ini mungkin telah tamat tempoh, telah dipadamkan, atau token tidak sah.
+            </p>
+            {activeToken && (
+              <div className="text-[11px] text-slate-400">
+                Token dicari: <span className="font-bold text-amber-400 font-mono">#{activeToken}</span>
+              </div>
+            )}
+            <p className="text-[11px] text-slate-500">
+              Sila pastikan anda mengimbas kod QR terkini di kaunter atau hubungi staf bertugas.
+            </p>
+          </div>
+
+          <div className="flex gap-2 justify-center pt-2">
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-chakra font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow active:scale-95 cursor-pointer"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Muat Semula</span>
+            </button>
+
+            {onBackToDashboard && (
+              <button
+                type="button"
+                onClick={onBackToDashboard}
+                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-chakra font-black text-xs uppercase tracking-wider active:scale-95 cursor-pointer"
+              >
+                Ke Kaunter
+              </button>
+            )}
+          </div>
+        </main>
+
+        <footer className="w-full max-w-md mx-auto text-center pt-3 border-t border-slate-800 text-[11px] font-mono text-slate-500">
+          Sistem Pengurusan RC Zone • Telemetri Sesi
+        </footer>
+      </div>
+    );
+  }
+
+  // 6. Active Live Session View
   return (
     <div
       onClick={unlockAudioContext}
       onTouchStart={unlockAudioContext}
       className={`min-h-screen flex flex-col justify-between text-slate-100 font-sans p-4 sm:p-6 transition-colors duration-500 select-none ${
-        isTimeUp
+        sessionStatus === 'COMPLETED'
+          ? 'bg-gradient-to-b from-[#0b1b15] via-[#08130e] to-[#040907]'
+          : isTimeUp
           ? 'bg-gradient-to-b from-[#2a0b12] via-[#1a080d] to-[#0a0406]'
           : isEndingSoon
           ? 'bg-gradient-to-b from-[#24170a] via-[#151008] to-[#0b0c10]'
+          : isPaused
+          ? 'bg-gradient-to-b from-[#1c160c] via-[#120f09] to-[#08090d]'
           : 'bg-gradient-to-b from-[#0b121e] via-[#080d16] to-[#05080e]'
       }`}
     >
@@ -268,7 +516,15 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div
           className={`absolute -top-40 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full blur-3xl opacity-25 transition-all duration-700 ${
-            isTimeUp ? 'bg-rose-500' : isEndingSoon ? 'bg-amber-500' : 'bg-amber-400'
+            sessionStatus === 'COMPLETED'
+              ? 'bg-emerald-500'
+              : isTimeUp
+              ? 'bg-rose-500'
+              : isEndingSoon
+              ? 'bg-amber-500'
+              : isPaused
+              ? 'bg-amber-400'
+              : 'bg-amber-400'
           }`}
         ></div>
       </div>
@@ -276,8 +532,8 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
       {/* Top Header & Telemetry Status */}
       <header className="relative z-10 w-full max-w-md mx-auto flex items-center justify-between pb-3 border-b border-slate-800/80">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-lg shadow-md">
-            {getMachineEmoji()}
+          <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center p-1.5 shadow-md">
+            <AssetIcon icon={getMachineIcon()} name={machineName} size="md" className="w-5 h-5" />
           </div>
           <div>
             <span className="text-[10px] font-mono font-black uppercase tracking-widest text-amber-400 block leading-tight">
@@ -289,18 +545,34 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
           </div>
         </div>
 
-        {/* Live Indicator */}
+        {/* Live Status Indicator */}
         <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#101927] border border-slate-700 text-[11px] font-mono font-bold">
-          <span className={`w-2 h-2 rounded-full ${isTimeUp ? 'bg-rose-500 animate-ping' : 'bg-emerald-400 animate-pulse'}`}></span>
-          <span className={isTimeUp ? 'text-rose-400' : 'text-emerald-300'}>
-            {isTimeUp ? 'TIME UP' : 'LIVE'}
-          </span>
+          {sessionStatus === 'COMPLETED' ? (
+            <>
+              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span className="text-emerald-300">SELESAI</span>
+            </>
+          ) : isPaused ? (
+            <>
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+              <span className="text-amber-300">DIHENTIKAN</span>
+            </>
+          ) : (
+            <>
+              <span
+                className={`w-2 h-2 rounded-full ${isTimeUp ? 'bg-rose-500 animate-ping' : 'bg-emerald-400 animate-pulse'}`}
+              ></span>
+              <span className={isTimeUp ? 'text-rose-400' : 'text-emerald-300'}>
+                {isTimeUp ? 'TIME UP' : 'LIVE'}
+              </span>
+            </>
+          )}
         </div>
       </header>
 
       {/* Main Container Content */}
       <main className="relative z-10 w-full max-w-md mx-auto my-auto py-4 space-y-4">
-        {/* AUTOMATIC AUTO-ARMED TELEPHONE ALARM BADGE */}
+        {/* Automatic Alarm Auto-Armed Badge */}
         <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-[#101927] to-emerald-500/15 border border-emerald-500/40 flex items-center justify-between gap-3 shadow-lg shadow-emerald-500/5">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center text-emerald-400 shrink-0">
@@ -320,6 +592,32 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
             AUTO-ARMED
           </span>
         </div>
+
+        {/* PAUSED BANNER NOTICE IF ADMIN PAUSED SESSION */}
+        {isPaused && (
+          <div className="p-4 rounded-3xl bg-amber-500/20 border-2 border-amber-400 text-amber-200 text-center shadow-lg space-y-1.5 animate-pulse">
+            <div className="flex items-center justify-center gap-2 text-amber-300 font-chakra font-black text-sm uppercase tracking-wide">
+              <PauseCircle className="w-5 h-5" />
+              <span>SESI DIHENTIKAN SEMENTARA</span>
+            </div>
+            <p className="text-xs font-mono text-amber-200/90">
+              Sesi anda dihentikan seketika oleh staf (contoh: pertukaran bateri). Masa anda dibekukan dan tidak akan ditolak!
+            </p>
+          </div>
+        )}
+
+        {/* COMPLETED BANNER NOTICE */}
+        {sessionStatus === 'COMPLETED' && (
+          <div className="p-4 rounded-3xl bg-emerald-500/20 border-2 border-emerald-400 text-emerald-200 text-center shadow-lg space-y-2">
+            <div className="text-3xl">🏁</div>
+            <h2 className="text-lg font-chakra font-black tracking-wider uppercase text-emerald-300">
+              SESI TELAH SELESAI
+            </h2>
+            <p className="text-xs font-mono text-emerald-200">
+              Terima kasih telah bermain di {businessName}! Sila serahkan alat kawalan kepada staf bertugas.
+            </p>
+          </div>
+        )}
 
         {/* TIME UP ALARM ACTIVE BANNER (SIREN PLAYING) */}
         {isTimeUp && isAlarmPlaying && (
@@ -352,24 +650,30 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
         )}
 
         {/* Live Digital Timer Card */}
-        <div className={`p-6 rounded-3xl border relative overflow-hidden backdrop-blur-md transition-all duration-300 shadow-2xl ${
-          isTimeUp
-            ? 'bg-[#180d12]/90 border-rose-500/60 shadow-rose-950/40'
-            : isEndingSoon
-            ? 'bg-[#1a140a]/90 border-amber-400/60 shadow-amber-950/40'
-            : 'bg-[#0f1725]/90 border-slate-700/80 shadow-slate-950/50'
-        }`}>
+        <div
+          className={`p-6 rounded-3xl border relative overflow-hidden backdrop-blur-md transition-all duration-300 shadow-2xl ${
+            sessionStatus === 'COMPLETED'
+              ? 'bg-[#0f1c16]/90 border-emerald-500/60 shadow-emerald-950/40'
+              : isTimeUp
+              ? 'bg-[#180d12]/90 border-rose-500/60 shadow-rose-950/40'
+              : isEndingSoon
+              ? 'bg-[#1a140a]/90 border-amber-400/60 shadow-amber-950/40'
+              : 'bg-[#0f1725]/90 border-slate-700/80 shadow-slate-950/50'
+          }`}
+        >
           {/* Progress Bar (Top) */}
           <div className="absolute top-0 left-0 right-0 h-2 bg-slate-800/80">
             <div
               className={`h-full transition-all duration-500 ${
-                isTimeUp
+                sessionStatus === 'COMPLETED'
+                  ? 'bg-emerald-400 w-full'
+                  : isTimeUp
                   ? 'bg-rose-500 w-full animate-pulse'
                   : isEndingSoon
                   ? 'bg-amber-400'
                   : 'bg-gradient-to-r from-amber-500 via-amber-400 to-amber-300'
               }`}
-              style={{ width: `${progressPercent}%` }}
+              style={{ width: sessionStatus === 'COMPLETED' ? '100%' : `${progressPercent}%` }}
             ></div>
           </div>
 
@@ -387,8 +691,13 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
               <span className="text-[11px] font-mono text-slate-400 block uppercase">
                 Unit RC
               </span>
-              <span className="text-sm font-mono font-bold text-amber-400 flex items-center justify-end gap-1">
-                <span>{getMachineEmoji()}</span>
+              <span className="text-sm font-mono font-bold text-amber-400 flex items-center justify-end gap-1.5">
+                <AssetIcon
+                  icon={getMachineIcon()}
+                  name={machineName}
+                  size="sm"
+                  className="w-4 h-4 inline-block"
+                />
                 <span>{machineName}</span>
               </span>
             </div>
@@ -397,30 +706,50 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
           {/* Main Giant Countdown Clock */}
           <div className="text-center py-3">
             <span className="text-[11px] font-mono font-black uppercase tracking-widest text-slate-400 block mb-1">
-              {isTimeUp ? 'TEMPOH TAMAT' : 'BAKI MASA SESI'}
+              {sessionStatus === 'COMPLETED'
+                ? 'SESI TELAH SELESAI'
+                : isPaused
+                ? 'MASA DIHENTIKAN SEMENTARA'
+                : isTimeUp
+                ? 'TEMPOH TAMAT'
+                : 'BAKI MASA SESI'}
             </span>
             <div
               className={`text-6xl sm:text-7xl font-mono font-black tracking-tight filter drop-shadow-lg ${
-                isTimeUp
+                sessionStatus === 'COMPLETED'
+                  ? 'text-emerald-400'
+                  : isPaused
+                  ? 'text-amber-300 animate-pulse'
+                  : isTimeUp
                   ? 'text-rose-500 animate-pulse'
                   : isEndingSoon
                   ? 'text-amber-400 animate-pulse'
                   : 'text-white'
               }`}
             >
-              {formatTimeRemaining(remainingSeconds)}
+              {sessionStatus === 'COMPLETED' ? '00:00' : formatTimeRemaining(remainingSeconds)}
             </div>
             <div className="flex items-center justify-center gap-2 mt-2">
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold ${
-                isTimeUp
-                  ? 'bg-rose-950/80 text-rose-300 border border-rose-500/40'
-                  : isEndingSoon
-                  ? 'bg-amber-950/80 text-amber-300 border border-amber-500/40 animate-pulse'
-                  : 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40'
-              }`}>
+              <span
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold ${
+                  sessionStatus === 'COMPLETED'
+                    ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40'
+                    : isPaused
+                    ? 'bg-amber-950/80 text-amber-300 border border-amber-500/40'
+                    : isTimeUp
+                    ? 'bg-rose-950/80 text-rose-300 border border-rose-500/40'
+                    : isEndingSoon
+                    ? 'bg-amber-950/80 text-amber-300 border border-amber-500/40 animate-pulse'
+                    : 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40'
+                }`}
+              >
                 <Clock className="w-3.5 h-3.5" />
                 <span>
-                  {isTimeUp
+                  {sessionStatus === 'COMPLETED'
+                    ? 'Sesi Ditamatkan'
+                    : isPaused
+                    ? 'Masa Dibekukan (Pause)'
+                    : isTimeUp
                     ? 'Sesi Selesai'
                     : isEndingSoon
                     ? 'Amaran: 1 Minit Terakhir!'
@@ -448,7 +777,7 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
         {/* Package & Info Details Card */}
         <div className="p-4 rounded-2xl bg-[#0f1725]/80 border border-slate-800 space-y-2.5 text-xs font-mono">
           <div className="flex items-center justify-between text-slate-300">
-            <span className="text-slate-400">Pakej Dipilih:</span>
+            <span className="text-slate-400">Pakej Sesi:</span>
             <span className="font-bold text-white">{packageName}</span>
           </div>
           <div className="flex items-center justify-between text-slate-300">
@@ -465,7 +794,7 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
         </div>
 
         {/* Early Finish Action Button (Customer can stop anytime) */}
-        {!isTimeUp && !hasStoppedAlarm && (
+        {!isTimeUp && !hasStoppedAlarm && sessionStatus === 'ACTIVE' && (
           <div>
             {!showEarlyFinishConfirm ? (
               <button
@@ -511,7 +840,7 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
             className="p-3 rounded-xl bg-[#131d2e] hover:bg-[#18263c] border border-slate-700/80 text-slate-200 font-chakra font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
           >
             <Share2 className="w-4 h-4 text-amber-400" />
-            <span>Kongsi Link</span>
+            <span>Kongsi Pautan</span>
           </button>
 
           <button
@@ -553,4 +882,3 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({ onBackToDash
     </div>
   );
 };
-

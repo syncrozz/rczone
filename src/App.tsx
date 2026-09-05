@@ -12,6 +12,7 @@ import { OfflineBanner } from './components/OfflineBanner';
 import { PwaInstallPrompt } from './components/PwaInstallPrompt';
 import { SessionQrModal } from './components/SessionQrModal';
 import { CustomerLiveView } from './components/CustomerLiveView';
+import { generateUniquePublicToken, parseCustomerLiveRoute, CustomerLiveRouteResult } from './utils/token';
 import { Machine, RidePackage, Session, TransactionRecord, QueueItem, AppSettings, AssetType, CustomerAlert } from './types';
 import {
   loadInitialData,
@@ -23,6 +24,7 @@ import {
   saveQueue,
   saveSettings,
   resetToFactoryDefaults,
+  upgradeAssetTypesWithImages,
   DEFAULT_MACHINES,
   DEFAULT_ASSET_TYPES,
   DEFAULT_PACKAGES,
@@ -68,12 +70,19 @@ export default function App() {
   const [nowTimestamp, setNowTimestamp] = useState<number>(Date.now());
   const [wakeLockState, setWakeLockState] = useState<boolean>(false);
 
-  // Customer Live View state
-  const [isCustomerView, setIsCustomerView] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get('view') === 'customer';
+  // Customer Live View routing state (/live/:token or legacy ?view=customer)
+  const [customerRoute, setCustomerRoute] = useState<CustomerLiveRouteResult>(() => {
+    return parseCustomerLiveRoute();
   });
+
+  // Track browser back/forward buttons or route changes
+  useEffect(() => {
+    const handlePopState = () => {
+      setCustomerRoute(parseCustomerLiveRoute());
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Modal dialog states
   const [newSessionOpen, setNewSessionOpen] = useState(false);
@@ -169,16 +178,27 @@ export default function App() {
         saveMachines(cloudData.machines);
       }
       if (cloudData.assetTypes !== undefined) {
-        setAssetTypes(cloudData.assetTypes);
-        saveAssetTypes(cloudData.assetTypes);
+        const upgraded = upgradeAssetTypesWithImages(cloudData.assetTypes);
+        setAssetTypes(upgraded);
+        saveAssetTypes(upgraded);
       }
       if (cloudData.packages !== undefined) {
         setPackages(cloudData.packages);
         savePackages(cloudData.packages);
       }
       if (cloudData.sessions !== undefined) {
-        setSessions(cloudData.sessions);
-        saveSessions(cloudData.sessions);
+        const withTokens = cloudData.sessions.map((s) => {
+          if (!s.publicSessionToken && s.id) {
+            const parts = s.id.split('_');
+            const token = parts.length >= 3 && parts[parts.length - 1].length >= 4
+              ? parts[parts.length - 1].toLowerCase()
+              : s.id.replace(/[^a-zA-Z0-9]/g, '').slice(-6).toLowerCase() || '74tw4i';
+            return { ...s, publicSessionToken: token };
+          }
+          return s;
+        });
+        setSessions(withTokens);
+        saveSessions(withTokens);
       }
       if (cloudData.transactions !== undefined) {
         setTransactions(cloudData.transactions);
@@ -319,10 +339,12 @@ export default function App() {
     const durationMs = totalDurationMinutes * 60 * 1000;
     const endTime = startTime + durationMs;
 
+    const publicSessionToken = generateUniquePublicToken(sessions);
     const newSessionId = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
     const newSession: Session = {
       id: newSessionId,
+      publicSessionToken,
       machineId,
       machineName: targetMachine.name,
       packageId,
@@ -578,6 +600,21 @@ export default function App() {
     updatePackagesState(packages.filter((p) => p.id !== id));
   };
 
+  // Transaction Management Handlers (Admin Edit, Delete, Add Manual for Cash Tally)
+  const handleUpdateTransaction = (updatedTx: TransactionRecord) => {
+    const nextTransactions = transactions.map((t) => (t.id === updatedTx.id ? updatedTx : t));
+    updateTransactionsState(nextTransactions);
+  };
+
+  const handleDeleteTransaction = (txId: string) => {
+    const nextTransactions = transactions.filter((t) => t.id !== txId);
+    updateTransactionsState(nextTransactions);
+  };
+
+  const handleAddManualTransaction = (newTx: TransactionRecord) => {
+    updateTransactionsState([newTx, ...transactions]);
+  };
+
   // Admin Protected Action Interceptor
   const handleRequireAdmin = useCallback(
     (
@@ -668,14 +705,18 @@ export default function App() {
     [machines]
   );
 
-  // If page was loaded via QR Code or WhatsApp Live link by the customer:
-  if (isCustomerView) {
+  // If page was loaded via Short Live URL (/live/:token), QR Code, or WhatsApp Live link by the customer:
+  if (customerRoute.isCustomerView) {
     return (
       <CustomerLiveView
+        token={customerRoute.token}
+        sessions={sessions}
+        machines={machines}
+        settings={settings}
+        legacyParams={customerRoute.legacyParams}
         onBackToDashboard={() => {
-          setIsCustomerView(false);
-          const cleanUrl = window.location.pathname;
-          window.history.replaceState({}, document.title, cleanUrl);
+          setCustomerRoute({ isCustomerView: false, isLegacy: false });
+          window.history.replaceState({}, document.title, '/');
         }}
       />
     );
@@ -841,8 +882,12 @@ export default function App() {
         isOpen={transactionsDrawerOpen}
         onClose={() => setTransactionsDrawerOpen(false)}
         transactions={transactions}
+        machines={machines}
         settings={settings}
         onClearTransactions={() => updateTransactionsState([])}
+        onUpdateTransaction={handleUpdateTransaction}
+        onDeleteTransaction={handleDeleteTransaction}
+        onAddTransaction={handleAddManualTransaction}
         onRequireAdmin={handleRequireAdmin}
       />
 

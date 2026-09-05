@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { Machine, RidePackage, AppSettings, MachineType, AssetType } from '../types';
 import { resolveAssetType } from '../utils/storage';
+import { AssetIcon, isImageUrl } from './AssetIcon';
 import { playTapSound, playTimeUpAlarm, playEndingSoonSound } from '../utils/sound';
 
 interface SettingsModalProps {
@@ -458,7 +459,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           .filter((t) => t.active)
                           .map((t) => (
                             <option key={t.id} value={t.id}>
-                              {t.icon} {t.name}
+                              {isImageUrl(t.icon) ? t.name : `${t.icon} ${t.name}`}
                             </option>
                           ))}
                       </select>
@@ -491,8 +492,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         className="p-3.5 rounded-2xl border border-slate-800 bg-[#0c121c] flex items-center justify-between gap-3 hover:border-slate-700 transition-colors"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-10 h-10 rounded-xl bg-[#151f2e] border border-slate-700 flex items-center justify-center text-xl shrink-0">
-                            {resolved.icon}
+                          <div className="w-10 h-10 rounded-xl bg-[#151f2e] border border-slate-700 flex items-center justify-center shrink-0 p-1">
+                            <AssetIcon icon={resolved.icon} name={m.name || resolved.name} size="md" className="w-6 h-6" />
                           </div>
                           <div className="min-w-0">
                             <div className="font-black text-sm text-white truncate">
@@ -635,8 +636,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         Ikon Emoji *
                       </label>
                       <div className="flex items-center gap-2">
-                        <div className="w-10 h-10 rounded-xl bg-[#151f2e] border border-slate-700 flex items-center justify-center text-2xl shrink-0">
-                          {newTypeIcon || '🎮'}
+                        <div className="w-10 h-10 rounded-xl bg-[#151f2e] border border-slate-700 flex items-center justify-center shrink-0 p-1">
+                          <AssetIcon icon={newTypeIcon || '🎮'} name={newTypeName} size="md" className="w-6 h-6" />
                         </div>
                         <input
                           type="text"
@@ -744,8 +745,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         Ikon Emoji *
                       </label>
                       <div className="flex items-center gap-2">
-                        <div className="w-10 h-10 rounded-xl bg-[#151f2e] border border-slate-700 flex items-center justify-center text-2xl shrink-0">
-                          {editingAssetType.icon || '🎮'}
+                        <div className="w-10 h-10 rounded-xl bg-[#151f2e] border border-slate-700 flex items-center justify-center shrink-0 p-1">
+                          <AssetIcon icon={editingAssetType.icon || '🎮'} name={editingAssetType.name} size="md" className="w-6 h-6" />
                         </div>
                         <input
                           type="text"
@@ -822,8 +823,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-11 h-11 rounded-xl bg-[#151f2e] border border-slate-700 flex items-center justify-center text-2xl shrink-0">
-                          {type.icon}
+                        <div className="w-11 h-11 rounded-xl bg-[#151f2e] border border-slate-700 flex items-center justify-center shrink-0 p-1.5">
+                          <AssetIcon icon={type.icon} name={type.name} size="lg" className="w-7 h-7" />
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">

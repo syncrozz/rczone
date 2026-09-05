@@ -1,14 +1,13 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import firebaseConfig from '../../firebase-applet-config.json';
+import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { getFirebaseApp, getFirebaseDb, getFirebaseAuth } from './firebase';
 import { Machine, RidePackage, Session, TransactionRecord, QueueItem, AppSettings, AssetType, CustomerAlert } from '../types';
 import { DEFAULT_MACHINES, DEFAULT_ASSET_TYPES, DEFAULT_PACKAGES, DEFAULT_SETTINGS } from '../utils/storage';
 
-// Initialize Firebase App
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId || undefined);
-export const auth = getAuth(app);
+// Initialize Firebase services from unified configuration
+const app = getFirebaseApp();
+export const db = getFirebaseDb()!;
+export const auth = getFirebaseAuth()!;
 
 // Authenticate anonymously so security rules work seamlessly
 let authPromise: Promise<void> | null = null;

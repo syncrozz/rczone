@@ -11,14 +11,44 @@ const STORAGE_KEYS = {
   SETTINGS: 'rc_fun_ride_settings_v1',
 };
 
+export const DIRECT_ASSET_IMAGE_MAP: Record<string, string> = {
+  bulldozer: 'https://raw.githubusercontent.com/syncrozz/syncrozz-assets/main/icon/RCZone/RCZONE.Bulldozer.png',
+  dumptruck: 'https://raw.githubusercontent.com/syncrozz/syncrozz-assets/main/icon/RCZone/RCZONE.DumpTruck.png',
+  'dump truck': 'https://raw.githubusercontent.com/syncrozz/syncrozz-assets/main/icon/RCZone/RCZONE.DumpTruck.png',
+  excavator: 'https://raw.githubusercontent.com/syncrozz/syncrozz-assets/main/icon/RCZone/RCZONE.Excavator.png',
+};
+
 export const DEFAULT_ASSET_TYPES: AssetType[] = [
-  { id: 'excavator', name: 'Excavator', icon: '🚜', active: true, createdAt: 1700000000000 },
-  { id: 'bulldozer', name: 'Bulldozer', icon: '🚧', active: true, createdAt: 1700000000000 },
-  { id: 'dumptruck', name: 'Dump Truck', icon: '🚛', active: true, createdAt: 1700000000000 },
+  { id: 'excavator', name: 'Excavator', icon: 'https://raw.githubusercontent.com/syncrozz/syncrozz-assets/main/icon/RCZone/RCZONE.Excavator.png', active: true, createdAt: 1700000000000 },
+  { id: 'bulldozer', name: 'Bulldozer', icon: 'https://raw.githubusercontent.com/syncrozz/syncrozz-assets/main/icon/RCZone/RCZONE.Bulldozer.png', active: true, createdAt: 1700000000000 },
+  { id: 'dumptruck', name: 'Dump Truck', icon: 'https://raw.githubusercontent.com/syncrozz/syncrozz-assets/main/icon/RCZone/RCZONE.DumpTruck.png', active: true, createdAt: 1700000000000 },
   { id: 'crane', name: 'Crane', icon: '🏗️', active: true, createdAt: 1700000000000 },
-  { id: 'loader', name: 'Loader', icon: '🚜', active: true, createdAt: 1700000000000 },
+  { id: 'loader', name: 'Loader', icon: 'https://raw.githubusercontent.com/syncrozz/syncrozz-assets/main/icon/RCZone/RCZONE.Bulldozer.png', active: true, createdAt: 1700000000000 },
   { id: 'generic', name: 'Generic', icon: '🎮', active: true, createdAt: 1700000000000 },
 ];
+
+export function upgradeAssetTypesWithImages(types: AssetType[]): AssetType[] {
+  return types.map((t) => {
+    const idKey = t.id?.toLowerCase() || '';
+    const nameKey = t.name?.toLowerCase() || '';
+    if (idKey === 'bulldozer' || nameKey === 'bulldozer' || t.icon === '🚧') {
+      return { ...t, icon: DIRECT_ASSET_IMAGE_MAP.bulldozer };
+    }
+    if (
+      idKey === 'dumptruck' ||
+      idKey === 'dump-truck' ||
+      nameKey === 'dump truck' ||
+      nameKey === 'dumptruck' ||
+      t.icon === '🚛'
+    ) {
+      return { ...t, icon: DIRECT_ASSET_IMAGE_MAP.dumptruck };
+    }
+    if (idKey === 'excavator' || nameKey === 'excavator' || t.icon === '🚜') {
+      return { ...t, icon: DIRECT_ASSET_IMAGE_MAP.excavator };
+    }
+    return t;
+  });
+}
 
 export const DEFAULT_PACKAGES: RidePackage[] = [
   { id: 'pkg-20m', name: '20 MIN', durationMinutes: 20, price: 10, isPopular: true },
@@ -61,20 +91,49 @@ export function resolveAssetType(
 
   // 1. Direct ID match
   const matchById = assetTypes.find((t) => t.id.toLowerCase() === query);
-  if (matchById) return matchById;
 
   // 2. Name match (case-insensitive)
   const matchByName = assetTypes.find((t) => t.name.toLowerCase() === query);
-  if (matchByName) return matchByName;
 
   // 3. Fallback to default presets if custom list didn't include standard defaults
   const matchDefault = DEFAULT_ASSET_TYPES.find(
     (t) => t.id.toLowerCase() === query || t.name.toLowerCase() === query
   );
-  if (matchDefault) return matchDefault;
+
+  const matched = matchById || matchByName || matchDefault;
+  if (matched) {
+    const idKey = matched.id.toLowerCase();
+    const nameKey = matched.name.toLowerCase();
+    if (idKey === 'bulldozer' || nameKey === 'bulldozer' || matched.icon === '🚧') {
+      return { ...matched, icon: DIRECT_ASSET_IMAGE_MAP.bulldozer };
+    }
+    if (
+      idKey === 'dumptruck' ||
+      idKey === 'dump-truck' ||
+      nameKey === 'dump truck' ||
+      nameKey === 'dumptruck' ||
+      matched.icon === '🚛'
+    ) {
+      return { ...matched, icon: DIRECT_ASSET_IMAGE_MAP.dumptruck };
+    }
+    if (idKey === 'excavator' || nameKey === 'excavator' || matched.icon === '🚜') {
+      return { ...matched, icon: DIRECT_ASSET_IMAGE_MAP.excavator };
+    }
+    return matched;
+  }
 
   // 4. Dynamic unknown asset type fallback with neat capitalised title
   const formattedName = typeIdOrName.charAt(0).toUpperCase() + typeIdOrName.slice(1);
+  const fallbackKey = query;
+  if (fallbackKey.includes('bulldozer')) {
+    return { id: typeIdOrName, name: formattedName, icon: DIRECT_ASSET_IMAGE_MAP.bulldozer, active: true };
+  }
+  if (fallbackKey.includes('dump')) {
+    return { id: typeIdOrName, name: formattedName, icon: DIRECT_ASSET_IMAGE_MAP.dumptruck, active: true };
+  }
+  if (fallbackKey.includes('excavator')) {
+    return { id: typeIdOrName, name: formattedName, icon: DIRECT_ASSET_IMAGE_MAP.excavator, active: true };
+  }
   return {
     id: typeIdOrName,
     name: formattedName,
@@ -146,6 +205,8 @@ export function loadInitialData(): {
       assetTypes = storedTypes ? JSON.parse(storedTypes) : DEFAULT_ASSET_TYPES;
       if (!Array.isArray(assetTypes) || assetTypes.length === 0) {
         assetTypes = DEFAULT_ASSET_TYPES;
+      } else {
+        assetTypes = upgradeAssetTypesWithImages(assetTypes);
       }
     } catch {
       assetTypes = DEFAULT_ASSET_TYPES;
@@ -161,6 +222,18 @@ export function loadInitialData(): {
     try {
       const storedSessions = localStorage.getItem(STORAGE_KEYS.SESSIONS);
       sessions = storedSessions ? JSON.parse(storedSessions) : [];
+      if (Array.isArray(sessions)) {
+        sessions = sessions.map((s) => {
+          if (!s.publicSessionToken && s.id) {
+            const parts = s.id.split('_');
+            const token = parts.length >= 3 && parts[parts.length - 1].length >= 4 
+              ? parts[parts.length - 1].toLowerCase() 
+              : s.id.replace(/[^a-zA-Z0-9]/g, '').slice(-6).toLowerCase() || '74tw4i';
+            return { ...s, publicSessionToken: token };
+          }
+          return s;
+        });
+      }
     } catch {
       sessions = [];
     }

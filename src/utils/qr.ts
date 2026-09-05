@@ -1,6 +1,7 @@
 import QRCode from 'qrcode';
 import { Session, Machine } from '../types';
 import { formatClockTime } from './format';
+import { getFallbackPublicToken } from './token';
 
 /**
  * Generate a high-resolution QR code data URL (PNG)
@@ -23,34 +24,18 @@ export async function generateQrDataUrl(text: string): Promise<string> {
 }
 
 /**
- * Build the full Live Tracker URL for the customer to open on their phone
+ * Build the customer-facing Short Live Tracker URL (e.g. https://rczone.syncrozz.com/live/74tw4i)
+ * Does NOT expose internal session IDs, customer name, price, or timestamps in the URL.
  */
 export function getLiveSessionUrl(
   session: Session,
-  machine?: Machine,
-  businessName = 'Fun Ride RC Zone'
+  _machine?: Machine,
+  _businessName = 'Fun Ride RC Zone'
 ): string {
   if (typeof window === 'undefined') return '';
-  
-  const baseUrl = `${window.location.origin}${window.location.pathname}`;
-  const params = new URLSearchParams({
-    view: 'customer',
-    session_id: session.id,
-    machine_id: session.machineId,
-    machine_name: session.machineName || machine?.name || 'RC Machine',
-    machine_type: machine?.type || 'excavator',
-    customer: session.customerName || 'Pelanggan',
-    pkg: session.packageName || 'Sesi RC',
-    duration: String(session.durationMinutes),
-    price: String(session.price),
-    start: String(session.startTime),
-    end: String(session.endTime),
-    paused: String(session.isPaused ? 1 : 0),
-    accum_pause: String(session.accumulatedPauseMs || 0),
-    biz: businessName,
-  });
-
-  return `${baseUrl}?${params.toString()}`;
+  const token = session.publicSessionToken || getFallbackPublicToken(session.id);
+  const origin = window.location.origin;
+  return `${origin}/live/${token}`;
 }
 
 /**

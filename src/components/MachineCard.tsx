@@ -21,6 +21,7 @@ import {
 import { Machine, Session, MachineStatus, AppSettings, AssetType } from '../types';
 import { calculateSessionTime, deriveMachineStatus, formatClockTime, formatTimeRemaining } from '../utils/format';
 import { resolveAssetType } from '../utils/storage';
+import { AssetIcon } from './AssetIcon';
 import { playTapSound } from '../utils/sound';
 
 interface MachineCardProps {
@@ -196,15 +197,22 @@ export const MachineCard: React.FC<MachineCardProps> = ({
         </div>
 
         {/* ROW 2: [ICON + NAMA + SUBTITLE] (Left) + [COMPACT ACTIONS] (Right) */}
-        <div className="flex items-center justify-between gap-2 min-w-0">
+        <div className="flex items-center justify-between gap-2.5 min-w-0">
           {/* Unit Name + Category */}
-          <div className="flex items-center gap-1.5 min-w-0 flex-1">
-            <span className="text-lg filter drop-shadow shrink-0">{matchedAssetType.icon}</span>
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <span className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-slate-900/80 border border-slate-700/60 p-1 flex items-center justify-center shrink-0 shadow-md">
+              <AssetIcon
+                icon={matchedAssetType.icon}
+                name={machine.name || matchedAssetType.name}
+                size="md"
+                className="w-8 h-8 sm:w-9 sm:h-9"
+              />
+            </span>
             <div className="min-w-0 flex-1">
               <h3 className="text-xs sm:text-sm font-chakra font-black text-white tracking-wide uppercase truncate leading-tight">
                 {machine.name}
               </h3>
-              <span className="text-[9px] font-mono text-slate-400 uppercase tracking-wider block truncate">
+              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block truncate">
                 {currentStatus === 'RUNNING' || currentStatus === 'ENDING_SOON' || currentStatus === 'TIME_UP'
                   ? (session?.customerName ? `${session.customerName} (${session.packageName || 'Walk-in'})` : machine.customTypeLabel || matchedAssetType.name)
                   : (machine.customTypeLabel || matchedAssetType.name)}
@@ -346,8 +354,15 @@ export const MachineCard: React.FC<MachineCardProps> = ({
           </div>
 
           {/* 2. ICON + NAMA UNIT */}
-          <div className="flex items-center gap-2.5 min-w-0 w-52 xl:w-60 shrink-0">
-            <span className="text-2xl filter drop-shadow shrink-0">{matchedAssetType.icon}</span>
+          <div className="flex items-center gap-3 min-w-0 w-60 xl:w-68 shrink-0">
+            <span className="w-12 h-12 xl:w-14 xl:h-14 rounded-2xl bg-slate-900/80 border border-slate-700/60 p-1.5 flex items-center justify-center shrink-0 shadow-md">
+              <AssetIcon
+                icon={matchedAssetType.icon}
+                name={machine.name || matchedAssetType.name}
+                size="lg"
+                className="w-9 h-9 xl:w-11 xl:h-11"
+              />
+            </span>
             <div className="min-w-0">
               <h3 className="text-sm sm:text-base font-chakra font-black text-white tracking-wide uppercase truncate leading-tight">
                 {machine.name}

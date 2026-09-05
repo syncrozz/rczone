@@ -35,6 +35,7 @@ export interface RidePackage {
 
 export interface Session {
   id: string;
+  publicSessionToken?: string; // Short customer-facing token e.g. '74tw4i'
   machineId: string;
   machineName: string;
   packageId: string;
@@ -79,6 +80,8 @@ export interface TransactionRecord {
   endTime: number;
   status: 'COMPLETED' | 'CANCELLED' | 'EXTENDED';
   createdAt: number;
+  notes?: string;
+  paymentMethod?: 'CASH' | 'QRIS_DUITNOW' | 'OTHER';
 }
 
 export interface QueueItem {

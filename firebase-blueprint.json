@@ -1,0 +1,54 @@
+{
+  "entities": {
+    "CloudSystemState": {
+      "title": "CloudSystemState",
+      "description": "Global synced telemetry, machine states, active sessions, and queue records for RC Fun Ride Manager",
+      "type": "object",
+      "properties": {
+        "machines": {
+          "type": "array",
+          "description": "List of all RC machines and their operational statuses"
+        },
+        "assetTypes": {
+          "type": "array",
+          "description": "List of configured asset types"
+        },
+        "packages": {
+          "type": "array",
+          "description": "List of rental ride packages"
+        },
+        "sessions": {
+          "type": "array",
+          "description": "List of current and recent rental sessions"
+        },
+        "transactions": {
+          "type": "array",
+          "description": "Historical transaction logs"
+        },
+        "queue": {
+          "type": "array",
+          "description": "Waiting queue entries"
+        },
+        "settings": {
+          "type": "object",
+          "description": "System settings and preferences"
+        },
+        "customerAlerts": {
+          "type": "array",
+          "description": "Recent alerts triggered by customer mobile live view"
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "Timestamp of latest cloud synchronization"
+        }
+      },
+      "required": ["machines", "packages", "sessions", "transactions", "queue", "settings", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/rc_system/{stateId}": {
+      "schema": "CloudSystemState",
+      "description": "Real-time synchronised motorsport telemetry and operational state"
+    }
+  }
+}

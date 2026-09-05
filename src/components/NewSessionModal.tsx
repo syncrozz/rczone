@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Machine, RidePackage, QueueItem, AppSettings, AssetType } from '../types';
 import { resolveAssetType } from '../utils/storage';
+import { AssetIcon } from './AssetIcon';
 import { playTapSound } from '../utils/sound';
 
 interface NewSessionModalProps {
@@ -215,8 +216,13 @@ export const NewSessionModal: React.FC<NewSessionModalProps> = ({
                           : 'border-slate-800 bg-[#0c121c] hover:bg-[#131a26] text-slate-300'
                       }`}
                     >
-                      <span className="text-2xl">
-                        {assetTypeInfo.icon}
+                      <span className="w-11 h-11 rounded-xl bg-slate-900/90 border border-slate-700/70 p-1 flex items-center justify-center shrink-0 shadow-inner">
+                        <AssetIcon
+                          icon={assetTypeInfo.icon}
+                          name={m.name || assetTypeInfo.name}
+                          size="lg"
+                          className="w-8 h-8"
+                        />
                       </span>
                       <div className="min-w-0">
                         <div className="font-mono font-black text-xs sm:text-sm text-white truncate">

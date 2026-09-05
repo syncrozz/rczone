@@ -171,6 +171,12 @@ export const SessionQrModal: React.FC<SessionQrModalProps> = ({
             <div className="mt-2 text-[10px] font-mono font-bold text-slate-600 uppercase tracking-wider">
               📱 Segerak Masa Nyata dengan Penggera Automatik
             </div>
+
+            {liveUrl && (
+              <div className="mt-2 px-3 py-1 rounded-full bg-slate-100 border border-slate-300 text-[11px] font-mono font-bold text-slate-800 max-w-full truncate select-all">
+                {liveUrl.replace(/^https?:\/\//, '')}
+              </div>
+            )}
           </div>
 
           {/* WhatsApp Direct Send Section */}

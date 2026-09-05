@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Plus, 
   Search, 
@@ -13,10 +13,11 @@ import {
   Zap,
   Settings,
   Boxes,
+  Calendar,
 } from 'lucide-react';
 import { Machine, Session, AppSettings, RidePackage, QueueItem, TransactionRecord, AssetType } from '../types';
 import { MachineCard } from './MachineCard';
-import { deriveMachineStatus } from '../utils/format';
+import { deriveMachineStatus, isToday, formatDateShort } from '../utils/format';
 import { playTapSound } from '../utils/sound';
 
 interface ControlBoardProps {
@@ -85,8 +86,20 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
     return { machine, activeSession, liveStatus };
   });
 
-  // Calculate today summary metrics
-  const totalRevenue = transactions.reduce((acc, tx) => acc + tx.price, 0);
+  // Date filter state for revenue KPI: 'TODAY' (default) or 'ALL'
+  const [revenueFilter, setRevenueFilter] = useState<'TODAY' | 'ALL'>('TODAY');
+
+  // Filter transactions based on date
+  const todayTransactions = useMemo(() => {
+    return transactions.filter((tx) => isToday(tx.createdAt || tx.startTime));
+  }, [transactions]);
+
+  const displayedTransactions = revenueFilter === 'TODAY' ? todayTransactions : transactions;
+  const totalRevenue = displayedTransactions.reduce(
+    (acc, tx) => acc + (tx.status !== 'CANCELLED' ? tx.price : 0),
+    0
+  );
+  const completedSessionsCount = displayedTransactions.filter((tx) => tx.status !== 'CANCELLED').length;
 
   // Check if any machine has TIME_UP or ENDING_SOON
   const timeUpMachines = machinesWithStatus.filter((item) => item.liveStatus === 'TIME_UP');
@@ -425,17 +438,56 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
         <div className="lg:col-span-1 bg-[#101723] border border-slate-800 rounded-2xl p-5 sm:p-6 text-white flex flex-col justify-between shadow-xl">
           <div>
             <div className="flex items-center justify-between mb-4 border-b border-slate-800/80 pb-3">
-              <h4 className="text-xs font-chakra font-black text-slate-400 uppercase tracking-widest">
-                TODAY TELEMETRY
-              </h4>
-              <TrendingUp className="w-4 h-4 text-emerald-400" />
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-emerald-400" />
+                <h4 className="text-xs font-chakra font-black text-slate-300 uppercase tracking-widest">
+                  KUTIPAN & TELEMETRI
+                </h4>
+              </div>
+
+              {/* Day / All Filter Pill */}
+              <div className="flex items-center bg-[#0a0f18] p-0.5 rounded-lg border border-slate-800 text-[10px] font-mono font-bold">
+                <button
+                  type="button"
+                  onClick={() => {
+                    playTapSound(settings.soundEnabled);
+                    setRevenueFilter('TODAY');
+                  }}
+                  className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                    revenueFilter === 'TODAY'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-xs'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Hari Ini
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    playTapSound(settings.soundEnabled);
+                    setRevenueFilter('ALL');
+                  }}
+                  className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                    revenueFilter === 'ALL'
+                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-xs'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Semua
+                </button>
+              </div>
             </div>
 
             <div className="space-y-4">
               <div>
-                <p className="text-[10px] text-slate-400 font-mono uppercase font-black tracking-wider">
-                  Total Revenue
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] text-slate-400 font-mono uppercase font-black tracking-wider">
+                    {revenueFilter === 'TODAY' ? 'Kutipan Hari Ini' : 'Jumlah Keseluruhan'}
+                  </p>
+                  <span className="text-[10px] font-mono text-slate-500 font-bold">
+                    {revenueFilter === 'TODAY' ? formatDateShort(Date.now()) : 'Semua Masa'}
+                  </span>
+                </div>
                 <p className="text-3xl font-black text-emerald-400 font-mono tracking-tight mt-0.5">
                   {settings.currencySymbol} {totalRevenue.toFixed(2)}
                 </p>
@@ -443,10 +495,10 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
 
               <div>
                 <p className="text-[10px] text-slate-400 font-mono uppercase font-black tracking-wider">
-                  Sessions Completed
+                  Sesi Selesai {revenueFilter === 'TODAY' ? '(Hari Ini)' : '(Semua)'}
                 </p>
                 <p className="text-2xl font-black text-white font-mono mt-0.5">
-                  {transactions.length}
+                  {completedSessionsCount}
                 </p>
               </div>
             </div>
@@ -456,9 +508,10 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
             <button
               type="button"
               onClick={onOpenTransactions}
-              className="w-full bg-[#151f2e] hover:bg-[#1a283c] py-2.5 rounded-xl text-xs font-chakra font-black text-slate-200 uppercase tracking-widest border border-slate-700/80 transition-colors cursor-pointer text-center hover:text-amber-300"
+              className="w-full bg-[#151f2e] hover:bg-[#1a283c] py-2.5 rounded-xl text-xs font-chakra font-black text-slate-200 uppercase tracking-widest border border-slate-700/80 transition-colors cursor-pointer text-center hover:text-amber-300 flex items-center justify-center gap-2"
             >
-              View Analytics
+              <span>Audit & Laras Transaksi</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
