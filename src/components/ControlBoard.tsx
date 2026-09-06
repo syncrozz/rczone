@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { 
-  Plus, 
+  Plus,
   Search, 
   Truck,
   Users,
@@ -123,7 +123,7 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
   });
 
   return (
-    <main className="max-w-7xl mx-auto px-2 sm:px-6 py-3 sm:py-6 space-y-4 sm:space-y-6">
+    <main className="w-full max-w-7xl mx-auto px-2 sm:px-6 py-3 sm:py-6 space-y-4 sm:space-y-6 min-w-0 overflow-x-hidden pb-8 sm:pb-12">
       {/* TIME UP NOTIFICATION BANNER */}
       {timeUpMachines.length > 0 && (
         <div className="p-3.5 sm:p-5 rounded-2xl bg-gradient-to-r from-rose-900/90 via-rose-800 to-rose-900 border border-rose-500/80 text-white shadow-2xl shadow-rose-900/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-pulse">
@@ -164,9 +164,9 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
       )}
 
       {/* RACE CONTROL FILTER BAR */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 bg-[#101723] p-2.5 sm:p-4 rounded-2xl border border-slate-800 shadow-xl">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 bg-[#101723] p-2.5 sm:p-4 rounded-2xl border border-slate-800 shadow-xl w-full min-w-0">
         {/* ROW 1 (or Left Group): Status Tab Navigation Filters */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none min-w-0">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 lg:pb-0 scrollbar-none min-w-0 w-full">
           <button
             type="button"
             id="filter-all"
@@ -266,8 +266,8 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
         </div>
 
         {/* ROW 2 (or Right Group): Search Input & Quick Asset Settings Button */}
-        <div className="flex items-center gap-2 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-800/80">
-          <div className="relative flex-1 sm:w-64 min-w-0">
+        <div className="flex items-center gap-2 w-full lg:w-auto min-w-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-800/80">
+          <div className="relative flex-1 lg:w-64 min-w-0">
             <Search className="w-3.5 h-3.5 text-amber-400/80 absolute left-3 top-2.5" />
             <input
               type="text"
@@ -285,7 +285,7 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
               playTapSound(settings.soundEnabled);
               onOpenSettings();
             }}
-            className="px-3 py-1.5 rounded-xl bg-[#151f2e] hover:bg-[#1f2e44] border border-amber-500/30 hover:border-amber-400 text-amber-400 text-xs font-chakra font-black uppercase tracking-wider flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0 shadow-xs whitespace-nowrap"
+            className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-[#151f2e] hover:bg-[#1f2e44] border border-amber-500/30 hover:border-amber-400 text-amber-400 text-xs font-chakra font-black uppercase tracking-wider flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0 shadow-xs whitespace-nowrap"
             title="Tambah atau Urus Koleksi Aset & Mesin"
           >
             <Boxes className="w-3.5 h-3.5 text-amber-400" />
@@ -344,6 +344,7 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
               nowTimestamp={nowTimestamp}
               settings={settings}
               assetTypes={assetTypes}
+              isAdminMode={isAdminMode}
               onStartSession={() => onOpenNewSession(machine.id)}
               onPauseResumeSession={onPauseResumeSession}
               onCompleteSession={onCompleteSession}
@@ -358,7 +359,7 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
       )}
 
       {/* LOWER TELEMETRY & COMPANION GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 w-full min-w-0">
         
         {/* Module 1: Waiting Queue Cockpit (2 Columns wide) */}
         <div className="lg:col-span-2 bg-[#101723] border border-slate-800 rounded-2xl p-5 sm:p-6 flex flex-col justify-between shadow-xl">
@@ -554,8 +555,8 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
       </div>
 
       {/* FOOTER TELEMETRY STATUS */}
-      <footer className="mt-8 pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row justify-between items-center text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider gap-3">
-        <div className="flex items-center gap-2">
+      <footer className="mt-8 pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row justify-between items-center text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider gap-3 w-full min-w-0">
+        <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
           <span>
             Developed by{' '}
             <a
@@ -582,14 +583,12 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
             />
           </a>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span>SYSTEM: <strong className="text-emerald-400">ONLINE</strong></span>
-            <span>&bull;</span>
-            <span>DATABASE: <strong className="text-amber-400">SYNCED</strong></span>
-            <span>&bull;</span>
-            <span>SES V4.3 MOTORSPORT</span>
-          </div>
+        <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-end text-center">
+          <span>SYSTEM: <strong className="text-emerald-400">ONLINE</strong></span>
+          <span>&bull;</span>
+          <span>DATABASE: <strong className="text-amber-400">SYNCED</strong></span>
+          <span>&bull;</span>
+          <span>SES V4.3 MOTORSPORT</span>
           {onOpenSupport && (
             <>
               <span>&bull;</span>
@@ -607,22 +606,6 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
           )}
         </div>
       </footer>
-
-      {/* FLOATING ACTION BAR FOR MOBILE */}
-      <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-30 md:hidden">
-        <button
-          type="button"
-          id="btn-floating-new-session"
-          onClick={() => {
-            playTapSound(settings.soundEnabled);
-            onOpenNewSession();
-          }}
-          className="h-14 px-6 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 active:scale-95 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-2xl shadow-amber-500/50 border border-amber-400 transition-transform cursor-pointer"
-        >
-          <Plus className="w-5 h-5 stroke-[3]" />
-          <span>SESI BARU</span>
-        </button>
-      </div>
     </main>
   );
 };

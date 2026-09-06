@@ -21,7 +21,7 @@ import { Session, Machine, AppSettings } from '../types';
 import { formatClockTime, formatTimeRemaining } from '../utils/format';
 import { resolveAssetType, loadInitialData } from '../utils/storage';
 import { AssetIcon } from './AssetIcon';
-import { notifyCustomerAlarmStopped, subscribeToCloudSync } from '../services/firebaseSync';
+import { notifyCustomerAlarmStopped, subscribeToCloudSync, CloudSyncStatus } from '../services/firebaseSync';
 import { parseCustomerLiveRoute, LegacyCustomerParams } from '../utils/token';
 import { getLiveSessionUrl } from '../utils/qr';
 import { SupportModal } from './SupportModal';

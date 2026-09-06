@@ -299,7 +299,7 @@ export default function App() {
     const action = urlParams.get('action');
 
     if (action === 'new-session') {
-      setNewSessionOpen(true);
+      handleOpenNewSessionProtected();
     } else if (action === 'queue') {
       setQueueDrawerOpen(true);
     } else if (action === 'transactions') {
@@ -768,6 +768,61 @@ export default function App() {
     );
   };
 
+  const handleOpenNewSessionProtected = (machineId?: string) => {
+    handleRequireAdmin(
+      () => {
+        setPreselectedMachineId(machineId);
+        setPreselectedQueueItem(undefined);
+        setNewSessionOpen(true);
+      },
+      'Kebenaran Mula Sesi',
+      'Sila masukkan Kod PIN Admin (6381) untuk memulakan sesi permainan.'
+    );
+  };
+
+  const handleStartFromQueueProtected = (queueItem: QueueItem) => {
+    handleRequireAdmin(
+      () => handleStartFromQueue(queueItem),
+      'Mula Sesi daripada Giliran',
+      'Pengesahan PIN Admin diperlukan untuk memulakan sesi daripada giliran.'
+    );
+  };
+
+  const handlePauseResumeSessionProtected = (session: Session) => {
+    handleRequireAdmin(
+      () => handlePauseResumeSession(session),
+      session.isPaused ? 'Sambung Sesi' : 'Jeda Sesi',
+      'Pengesahan PIN Admin diperlukan untuk mengawal sesi ini.'
+    );
+  };
+
+  const handleCompleteSessionProtected = (session: Session) => {
+    handleRequireAdmin(
+      () => handleOpenCompleteModal(session),
+      'Tamatkan Sesi',
+      'Pengesahan PIN Admin diperlukan untuk menamatkan sesi ini.'
+    );
+  };
+
+  const handleExtendSessionProtected = (session: Session, extensionMinutes: number, extensionPrice = 0) => {
+    handleRequireAdmin(
+      () => handleExtendSession(session, extensionMinutes, extensionPrice),
+      'Tambah Masa Sesi',
+      'Pengesahan PIN Admin diperlukan untuk menambah masa sesi.'
+    );
+  };
+
+  const handleOpenCustomExtendProtected = (session: Session) => {
+    handleRequireAdmin(
+      () => {
+        setActiveExtendingSession(session);
+        setExtendModalOpen(true);
+      },
+      'Tambah Masa Sesi',
+      'Pengesahan PIN Admin diperlukan untuk menambah masa sesi.'
+    );
+  };
+
   const handleToggleMaintenanceProtected = (machine: Machine) => {
     handleRequireAdmin(
       () => handleToggleMaintenance(machine),
@@ -820,7 +875,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0b0f17] text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950 bg-carbon">
+    <div className="min-h-screen bg-[#0b0f17] text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950 bg-carbon w-full max-w-full overflow-x-hidden">
       {/* Top Application Header */}
       <Header
         settings={settings}
@@ -829,11 +884,7 @@ export default function App() {
         sessions={sessions}
         queue={queue}
         nowTimestamp={nowTimestamp}
-        onOpenNewSession={() => {
-          setPreselectedMachineId(undefined);
-          setPreselectedQueueItem(undefined);
-          setNewSessionOpen(true);
-        }}
+        onOpenNewSession={() => handleOpenNewSessionProtected()}
         onOpenQueue={() => setQueueDrawerOpen(true)}
         onOpenTransactions={() => setTransactionsDrawerOpen(true)}
         onOpenSettings={handleOpenSettingsWithAdmin}
@@ -897,24 +948,17 @@ export default function App() {
         nowTimestamp={nowTimestamp}
         settings={settings}
         isAdminMode={isAdminMode}
-        onOpenNewSession={(machineId) => {
-          setPreselectedMachineId(machineId);
-          setPreselectedQueueItem(undefined);
-          setNewSessionOpen(true);
-        }}
-        onPauseResumeSession={handlePauseResumeSession}
-        onCompleteSession={handleOpenCompleteModal}
-        onExtendSession={handleExtendSession}
-        onOpenCustomExtend={(session) => {
-          setActiveExtendingSession(session);
-          setExtendModalOpen(true);
-        }}
+        onOpenNewSession={handleOpenNewSessionProtected}
+        onPauseResumeSession={handlePauseResumeSessionProtected}
+        onCompleteSession={handleCompleteSessionProtected}
+        onExtendSession={handleExtendSessionProtected}
+        onOpenCustomExtend={handleOpenCustomExtendProtected}
         onCancelSession={handleCancelSessionProtected}
         onToggleMaintenance={handleToggleMaintenanceProtected}
         onOpenSettings={handleOpenSettingsWithAdmin}
         onOpenQueue={() => setQueueDrawerOpen(true)}
         onOpenTransactions={() => setTransactionsDrawerOpen(true)}
-        onStartFromQueue={handleStartFromQueue}
+        onStartFromQueue={handleStartFromQueueProtected}
         onOpenQrModal={handleOpenQrModal}
         onOpenSupport={() => setSupportModalOpen(true)}
       />
