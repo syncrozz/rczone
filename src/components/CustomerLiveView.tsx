@@ -109,24 +109,40 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({
     }
   }, [propSettings]);
 
-  // Connect directly to Firebase Cloud Sync if opened in isolation or propSessions is empty
+  // Cloud sync status state
+  const [cloudStatus, setCloudStatus] = useState<CloudSyncStatus>('CONNECTING');
+  const [cloudErrorMsg, setCloudErrorMsg] = useState<string | undefined>();
+  const [hasReceivedCloudData, setHasReceivedCloudData] = useState<boolean>(false);
+
+  // Connect directly to Firebase Cloud Sync in read-only mode
   useEffect(() => {
-    const unsubscribe = subscribeToCloudSync((cloudData) => {
-      if (cloudData.sessions) setInternalSessions(cloudData.sessions);
-      if (cloudData.machines) setInternalMachines(cloudData.machines);
-      if (cloudData.settings) setInternalSettings((prev) => ({ ...prev, ...(cloudData.settings || {}) }));
-    });
+    const unsubscribe = subscribeToCloudSync(
+      (cloudData) => {
+        setHasReceivedCloudData(true);
+        if (cloudData.sessions) setInternalSessions(cloudData.sessions);
+        if (cloudData.machines) setInternalMachines(cloudData.machines);
+        if (cloudData.settings) setInternalSettings((prev) => ({ ...prev, ...(cloudData.settings || {}) }));
+      },
+      (err) => {
+        setCloudErrorMsg(err.message);
+      },
+      (status, errorMsg) => {
+        setCloudStatus(status);
+        if (errorMsg) setCloudErrorMsg(errorMsg);
+      },
+      { isReadOnly: true }
+    );
     return () => unsubscribe();
   }, []);
 
   // 3. Resolve active session from public token or legacy parameters
   const [isResolving, setIsResolving] = useState<boolean>(true);
 
-  // Grace period timer for cloud connection on direct mobile page load
+  // Grace period timer for cloud connection on direct mobile page load (increased to 8s for cellular networks)
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsResolving(false);
-    }, 2500);
+    }, 8000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -438,14 +454,23 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({
 
   // 5. Not Found / Expired Session View
   if (!resolvedSession) {
+    const isPermissionError = cloudErrorMsg?.toLowerCase().includes('permission') || cloudErrorMsg?.toLowerCase().includes('ditolak');
+    const isCloudConnecting = cloudStatus === 'CONNECTING' && !hasReceivedCloudData;
+
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#140b10] via-[#0e080c] to-[#080406] text-slate-100 flex flex-col justify-between p-6 select-none font-sans">
         <header className="w-full max-w-md mx-auto flex items-center justify-between pb-3 border-b border-slate-800">
           <span className="text-xs font-mono font-black uppercase tracking-widest text-amber-400">
             {businessName}
           </span>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
-            DISCONNECTED
+          <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
+            cloudStatus === 'CONNECTED'
+              ? 'bg-emerald-950/60 text-emerald-400 border-emerald-700/60'
+              : cloudStatus === 'CONNECTING'
+              ? 'bg-amber-950/60 text-amber-400 border-amber-700/60 animate-pulse'
+              : 'bg-rose-950/60 text-rose-400 border-rose-700/60'
+          }`}>
+            {cloudStatus}
           </span>
         </header>
 
@@ -455,12 +480,16 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({
           </div>
 
           <h2 className="text-2xl font-chakra font-black uppercase text-white tracking-wide">
-            Sesi Tidak Ditemui
+            {isCloudConnecting ? 'Menyambung ke Kaunter...' : isPermissionError ? 'Menunggu Kebenaran Awan' : 'Sesi Tidak Ditemui'}
           </h2>
 
           <div className="p-4 rounded-2xl bg-[#110d13] border border-rose-500/30 text-xs font-mono space-y-2">
             <p className="text-rose-300 font-bold">
-              Pautan sesi ini mungkin telah tamat tempoh, telah dipadamkan, atau token tidak sah.
+              {isPermissionError
+                ? 'Pangkalan data awan memerlukan kebenaran baca/tulis di Firebase Rules.'
+                : isCloudConnecting
+                ? 'Sedang menghubungi pelayan kaunter RC Zone. Sila tunggu sebentar...'
+                : 'Pautan sesi ini mungkin telah tamat tempoh, telah dipadamkan, atau token tidak sah.'}
             </p>
             {activeToken && (
               <div className="text-[11px] text-slate-400">
@@ -468,7 +497,9 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({
               </div>
             )}
             <p className="text-[11px] text-slate-500">
-              Sila pastikan anda mengimbas kod QR terkini di kaunter atau hubungi staf bertugas.
+              {isPermissionError
+                ? 'Sila pastikan Security Rules di Firebase Console telah ditetapkan kepada allow read, write.'
+                : 'Sila pastikan anda mengimbas kod QR terkini di kaunter atau hubungi staf bertugas.'}
             </p>
           </div>
 

@@ -191,8 +191,16 @@ export default function App() {
         setSyncErrorMessage(undefined);
 
         if (cloudData.machines !== undefined) {
-          setMachines(cloudData.machines);
-          saveMachines(cloudData.machines);
+          setMachines((prevMachines) => {
+            const hasRunningLocal = prevMachines.some((m) => m.status === 'RUNNING');
+            const hasRunningCloud = cloudData.machines!.some((m) => m.status === 'RUNNING');
+            if (hasRunningLocal && !hasRunningCloud && (!cloudData.sessions || cloudData.sessions.length === 0)) {
+              pushCloudUpdate({ machines: prevMachines });
+              return prevMachines;
+            }
+            saveMachines(cloudData.machines!);
+            return cloudData.machines!;
+          });
         }
         if (cloudData.assetTypes !== undefined) {
           const upgraded = upgradeAssetTypesWithImages(cloudData.assetTypes);
@@ -204,18 +212,26 @@ export default function App() {
           savePackages(cloudData.packages);
         }
         if (cloudData.sessions !== undefined) {
-          const withTokens = cloudData.sessions.map((s) => {
-            if (!s.publicSessionToken && s.id) {
-              const parts = s.id.split('_');
-              const token = parts.length >= 3 && parts[parts.length - 1].length >= 4
-                ? parts[parts.length - 1].toLowerCase()
-                : s.id.replace(/[^a-zA-Z0-9]/g, '').slice(-6).toLowerCase() || '74tw4i';
-              return { ...s, publicSessionToken: token };
+          setSessions((prevSessions) => {
+            const hasActiveLocal = prevSessions.some((s) => s.status === 'ACTIVE');
+            if (cloudData.sessions!.length === 0 && hasActiveLocal) {
+              pushCloudUpdate({ sessions: prevSessions });
+              return prevSessions;
             }
-            return s;
+
+            const withTokens = cloudData.sessions!.map((s) => {
+              if (!s.publicSessionToken && s.id) {
+                const parts = s.id.split('_');
+                const token = parts.length >= 3 && parts[parts.length - 1].length >= 4
+                  ? parts[parts.length - 1].toLowerCase()
+                  : s.id.replace(/[^a-zA-Z0-9]/g, '').slice(-6).toLowerCase() || '74tw4i';
+                return { ...s, publicSessionToken: token };
+              }
+              return s;
+            });
+            saveSessions(withTokens);
+            return withTokens;
           });
-          setSessions(withTokens);
-          saveSessions(withTokens);
         }
         if (cloudData.transactions !== undefined) {
           setTransactions(cloudData.transactions);

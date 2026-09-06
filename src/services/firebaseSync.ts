@@ -107,7 +107,8 @@ export async function testFirestoreConnection(): Promise<{ ok: boolean; message:
 export function subscribeToCloudSync(
   onUpdate: (data: Partial<CloudSystemState>) => void,
   onError?: (err: Error) => void,
-  onStatusChange?: (status: CloudSyncStatus, errorMsg?: string) => void
+  onStatusChange?: (status: CloudSyncStatus, errorMsg?: string) => void,
+  options?: { isReadOnly?: boolean; initialAdminState?: CloudSystemState }
 ): () => void {
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
     currentSyncStatus = 'OFFLINE';
@@ -132,20 +133,9 @@ export function subscribeToCloudSync(
       if (snapshot.exists()) {
         const data = snapshot.data() as CloudSystemState;
         onUpdate(data);
-      } else {
-        // First time initialization in Cloud Firestore
-        const initialState: CloudSystemState = {
-          machines: DEFAULT_MACHINES,
-          assetTypes: DEFAULT_ASSET_TYPES,
-          packages: DEFAULT_PACKAGES,
-          sessions: [],
-          transactions: [],
-          queue: [],
-          settings: DEFAULT_SETTINGS,
-          customerAlerts: [],
-          updatedAt: Date.now(),
-        };
-        setDoc(docRef, initialState, { merge: true }).catch((err) =>
+      } else if (!options?.isReadOnly && options?.initialAdminState) {
+        // Admin first-time seeding with existing local state (never wipe with empty sessions)
+        setDoc(docRef, { ...options.initialAdminState, updatedAt: Date.now() }, { merge: true }).catch((err) =>
           console.warn('Initial cloud seed error:', err)
         );
       }
