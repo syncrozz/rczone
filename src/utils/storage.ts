@@ -70,7 +70,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   alarmRepeat: true,
   vibrationEnabled: true,
   wakeLockEnabled: true,
-  businessName: 'RC FUN RIDE',
+  businessName: 'RC ZONE',
   currencySymbol: 'RM',
   adminPin: '6381',
 };
@@ -255,6 +255,10 @@ export function loadInitialData(): {
     try {
       const storedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
       settings = storedSettings ? { ...DEFAULT_SETTINGS, ...JSON.parse(storedSettings) } : DEFAULT_SETTINGS;
+      if (settings.businessName === 'RC FUN RIDE' || settings.businessName === 'FUN RIDE' || !settings.businessName) {
+        settings.businessName = 'RC ZONE';
+        localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+      }
       if (settings.adminPin === '5313' || !settings.adminPin) {
         settings.adminPin = '6381';
         localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));

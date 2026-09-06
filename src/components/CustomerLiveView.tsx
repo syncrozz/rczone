@@ -76,7 +76,7 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({
       return loadInitialData().settings;
     } catch {
       return {
-        businessName: 'FUN RIDE RC ZONE',
+        businessName: 'RC ZONE',
         adminPin: '6381',
         bufferMinutes: 3,
         soundEnabled: true,
@@ -185,7 +185,11 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({
     return allMachines.find((m) => m.id === resolvedSession.machineId) || null;
   }, [propMachines, internalMachines, resolvedSession]);
 
-  const businessName = propSettings?.businessName || internalSettings.businessName || 'FUN RIDE RC ZONE';
+  const rawBusinessName = propSettings?.businessName || internalSettings.businessName;
+  const businessName =
+    !rawBusinessName || rawBusinessName === 'RC FUN RIDE' || rawBusinessName === 'FUN RIDE' || rawBusinessName === 'FUN RIDE RC ZONE'
+      ? 'RC ZONE'
+      : rawBusinessName;
   const machineName = resolvedSession?.machineName || activeMachine?.name || legacyParams?.machineName || 'RC Machine';
   const machineType = activeMachine?.type || legacyParams?.machineType || 'excavator';
   const customerName = resolvedSession?.customerName || legacyParams?.customerName || 'Pelanggan';

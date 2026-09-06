@@ -156,7 +156,7 @@ export function parseCustomerLiveRoute(): CustomerLiveRouteResult {
       endTime: parseInt(searchParams.get('end') || String(Date.now() + 20 * 60 * 1000), 10),
       isPaused: searchParams.get('paused') === '1',
       accumulatedPauseMs: parseInt(searchParams.get('accum_pause') || '0', 10),
-      businessName: searchParams.get('biz') || 'FUN RIDE RC ZONE',
+      businessName: searchParams.get('biz') || 'RC ZONE',
     };
 
     return {

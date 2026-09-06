@@ -1,5 +1,5 @@
 {
-  "name": "RC Fun Ride Manager",
+  "name": "RC ZONE",
   "description": "Sistem Kawalan Telemetri & Pengurusan Sesi RC Zone Motorsport",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

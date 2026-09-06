@@ -117,6 +117,11 @@ export const Header: React.FC<HeaderProps> = ({
     onUpdateSettings({ ...settings, soundEnabled: next });
   };
 
+  const businessTitle =
+    !settings.businessName || settings.businessName === 'RC FUN RIDE' || settings.businessName === 'FUN RIDE'
+      ? 'RC ZONE'
+      : settings.businessName;
+
   return (
     <header className="bg-[#0b0f17]/95 backdrop-blur-xl border-b border-slate-800/80 sticky top-0 z-30 shadow-2xl transition-colors duration-200">
       {/* Top Motorsport Accent Line */}
@@ -147,14 +152,14 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="flex flex-col min-w-0 leading-none">
                 <div className="flex items-center gap-1.5">
                   <span className="text-[10px] font-chakra font-black uppercase tracking-widest text-amber-400 whitespace-nowrap">
-                    RC ZONE
+                    MOTORSPORT
                   </span>
                   <span className="text-[8px] font-mono px-1 py-0.2 rounded bg-slate-800 text-slate-300 font-bold border border-slate-700 whitespace-nowrap">
                     v4.3
                   </span>
                 </div>
                 <h1 className="text-xs font-chakra font-black text-white truncate tracking-wide uppercase mt-0.5">
-                  {settings.businessName || 'FUN RIDE'}
+                  {businessTitle}
                 </h1>
               </div>
             </div>
@@ -334,7 +339,7 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="flex flex-col">
                 <div className="flex items-center gap-2">
                   <h1 className="text-xl lg:text-2xl font-chakra font-black text-white tracking-wider uppercase truncate">
-                    {settings.businessName || 'FUN RIDE'}
+                    {businessTitle}
                   </h1>
                   <span className="px-2 py-0.5 rounded-md text-[9px] font-mono font-black uppercase tracking-widest bg-[#151e2b] text-amber-400 border border-amber-500/30 shadow-xs whitespace-nowrap">
                     CONTROL BOARD

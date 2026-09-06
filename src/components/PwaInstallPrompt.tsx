@@ -96,7 +96,7 @@ export function PwaInstallPrompt() {
               </span>
             </div>
             <h4 className="text-xs font-chakra font-black text-white uppercase tracking-wide truncate mt-0.5">
-              Pasang Aplikasi RC Fun Ride
+              Pasang Aplikasi RC Zone
             </h4>
             <p className="text-[11px] text-slate-300 font-sans truncate">
               Akses pantas terus dari skrin utama telefon anda

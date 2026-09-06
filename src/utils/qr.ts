@@ -58,14 +58,14 @@ export function getWhatsAppShareUrl(
   phone: string,
   session: Session,
   machine?: Machine,
-  businessName = 'FUN RIDE RC ZONE',
+  businessName = 'RC ZONE',
   currencySymbol = 'RM'
 ): string {
   const cleanPhone = formatPhoneNumberForWhatsApp(phone);
   const liveUrl = getLiveSessionUrl(session, machine, businessName);
   const endTimeStr = formatClockTime(session.endTime);
   const customerName = session.customerName?.trim() || 'Pelanggan';
-  const machineName = session.machineName || machine?.name || 'RC Fun Ride Unit';
+  const machineName = session.machineName || machine?.name || 'RC Zone Unit';
 
   const message = [
     `🏁 *${businessName.toUpperCase()} - LIVE TRACKER SESI* 🏁`,

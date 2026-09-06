@@ -227,8 +227,16 @@ export default function App() {
         }
         if (cloudData.settings !== undefined) {
           let incomingSettings = cloudData.settings;
+          let shouldPush = false;
           if (incomingSettings.adminPin === '5313' || !incomingSettings.adminPin) {
             incomingSettings = { ...incomingSettings, adminPin: '6381' };
+            shouldPush = true;
+          }
+          if (incomingSettings.businessName === 'RC FUN RIDE' || incomingSettings.businessName === 'FUN RIDE' || !incomingSettings.businessName) {
+            incomingSettings = { ...incomingSettings, businessName: 'RC ZONE' };
+            shouldPush = true;
+          }
+          if (shouldPush) {
             pushCloudUpdate({ settings: incomingSettings });
           }
           setSettings((prev) => ({ ...prev, ...incomingSettings }));
