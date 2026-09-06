@@ -13,6 +13,7 @@ import { PwaInstallPrompt } from './components/PwaInstallPrompt';
 import { SessionQrModal } from './components/SessionQrModal';
 import { SupportModal } from './components/SupportModal';
 import { CustomerLiveView } from './components/CustomerLiveView';
+import { CloudSyncModal } from './components/CloudSyncModal';
 import { generateUniquePublicToken, parseCustomerLiveRoute, CustomerLiveRouteResult } from './utils/token';
 import { Machine, RidePackage, Session, TransactionRecord, QueueItem, AppSettings, AssetType, CustomerAlert } from './types';
 import {
@@ -35,7 +36,9 @@ import {
   subscribeToCloudSync,
   pushCloudUpdate,
   CloudSystemState,
+  CloudSyncStatus,
 } from './services/firebaseSync';
+import { firebaseConfig } from './services/firebase';
 import {
   playTapSound,
   playSessionStartSound,
@@ -115,6 +118,12 @@ export default function App() {
   const [pinModalTitle, setPinModalTitle] = useState<string>('Akses Mod Admin');
   const [pinModalDesc, setPinModalDesc] = useState<string>('Sila masukkan 4-digit PIN keselamatan untuk aktifkan mod suntingan admin.');
 
+  // Cloud Sync state
+  const [syncStatus, setSyncStatus] = useState<CloudSyncStatus>('CONNECTING');
+  const [syncErrorMessage, setSyncErrorMessage] = useState<string | undefined>(undefined);
+  const [cloudSyncModalOpen, setCloudSyncModalOpen] = useState<boolean>(false);
+  const [syncSubscriptionKey, setSyncSubscriptionKey] = useState<number>(0);
+
   // Reference to track machine statuses to fire alarms only once on transition
   const previousStatusMap = useRef<Map<string, string>>(new Map());
 
@@ -176,67 +185,80 @@ export default function App() {
 
   // 4. Realtime Cross-Device Firebase Cloud Sync
   useEffect(() => {
-    const unsubscribe = subscribeToCloudSync((cloudData) => {
-      if (cloudData.machines !== undefined) {
-        setMachines(cloudData.machines);
-        saveMachines(cloudData.machines);
-      }
-      if (cloudData.assetTypes !== undefined) {
-        const upgraded = upgradeAssetTypesWithImages(cloudData.assetTypes);
-        setAssetTypes(upgraded);
-        saveAssetTypes(upgraded);
-      }
-      if (cloudData.packages !== undefined) {
-        setPackages(cloudData.packages);
-        savePackages(cloudData.packages);
-      }
-      if (cloudData.sessions !== undefined) {
-        const withTokens = cloudData.sessions.map((s) => {
-          if (!s.publicSessionToken && s.id) {
-            const parts = s.id.split('_');
-            const token = parts.length >= 3 && parts[parts.length - 1].length >= 4
-              ? parts[parts.length - 1].toLowerCase()
-              : s.id.replace(/[^a-zA-Z0-9]/g, '').slice(-6).toLowerCase() || '74tw4i';
-            return { ...s, publicSessionToken: token };
-          }
-          return s;
-        });
-        setSessions(withTokens);
-        saveSessions(withTokens);
-      }
-      if (cloudData.transactions !== undefined) {
-        setTransactions(cloudData.transactions);
-        saveTransactions(cloudData.transactions);
-      }
-      if (cloudData.queue !== undefined) {
-        setQueue(cloudData.queue);
-        saveQueue(cloudData.queue);
-      }
-      if (cloudData.settings !== undefined) {
-        let incomingSettings = cloudData.settings;
-        if (incomingSettings.adminPin === '5313' || !incomingSettings.adminPin) {
-          incomingSettings = { ...incomingSettings, adminPin: '6381' };
-          pushCloudUpdate({ settings: incomingSettings });
+    const unsubscribe = subscribeToCloudSync(
+      (cloudData) => {
+        setSyncStatus('CONNECTED');
+        setSyncErrorMessage(undefined);
+
+        if (cloudData.machines !== undefined) {
+          setMachines(cloudData.machines);
+          saveMachines(cloudData.machines);
         }
-        setSettings((prev) => ({ ...prev, ...incomingSettings }));
-        saveSettings({ ...settings, ...incomingSettings });
-      }
-      if (cloudData.customerAlerts !== undefined) {
-        setCustomerAlerts((prevAlerts) => {
-          // Check if there are newly arrived alerts to play an alert chime
-          const prevIds = new Set(prevAlerts.map((a) => a.id));
-          const newAlerts = cloudData.customerAlerts!.filter((a) => !prevIds.has(a.id) && !a.acknowledged);
-          if (newAlerts.length > 0) {
-            playEndingSoonSound(settings.soundEnabled);
-            triggerVibration([300, 100, 300], settings.vibrationEnabled);
+        if (cloudData.assetTypes !== undefined) {
+          const upgraded = upgradeAssetTypesWithImages(cloudData.assetTypes);
+          setAssetTypes(upgraded);
+          saveAssetTypes(upgraded);
+        }
+        if (cloudData.packages !== undefined) {
+          setPackages(cloudData.packages);
+          savePackages(cloudData.packages);
+        }
+        if (cloudData.sessions !== undefined) {
+          const withTokens = cloudData.sessions.map((s) => {
+            if (!s.publicSessionToken && s.id) {
+              const parts = s.id.split('_');
+              const token = parts.length >= 3 && parts[parts.length - 1].length >= 4
+                ? parts[parts.length - 1].toLowerCase()
+                : s.id.replace(/[^a-zA-Z0-9]/g, '').slice(-6).toLowerCase() || '74tw4i';
+              return { ...s, publicSessionToken: token };
+            }
+            return s;
+          });
+          setSessions(withTokens);
+          saveSessions(withTokens);
+        }
+        if (cloudData.transactions !== undefined) {
+          setTransactions(cloudData.transactions);
+          saveTransactions(cloudData.transactions);
+        }
+        if (cloudData.queue !== undefined) {
+          setQueue(cloudData.queue);
+          saveQueue(cloudData.queue);
+        }
+        if (cloudData.settings !== undefined) {
+          let incomingSettings = cloudData.settings;
+          if (incomingSettings.adminPin === '5313' || !incomingSettings.adminPin) {
+            incomingSettings = { ...incomingSettings, adminPin: '6381' };
+            pushCloudUpdate({ settings: incomingSettings });
           }
-          return cloudData.customerAlerts!;
-        });
+          setSettings((prev) => ({ ...prev, ...incomingSettings }));
+          saveSettings({ ...settings, ...incomingSettings });
+        }
+        if (cloudData.customerAlerts !== undefined) {
+          setCustomerAlerts((prevAlerts) => {
+            // Check if there are newly arrived alerts to play an alert chime
+            const prevIds = new Set(prevAlerts.map((a) => a.id));
+            const newAlerts = cloudData.customerAlerts!.filter((a) => !prevIds.has(a.id) && !a.acknowledged);
+            if (newAlerts.length > 0) {
+              playEndingSoonSound(settings.soundEnabled);
+              triggerVibration([300, 100, 300], settings.vibrationEnabled);
+            }
+            return cloudData.customerAlerts!;
+          });
+        }
+      },
+      (error) => {
+        setSyncStatus('ERROR');
+        setSyncErrorMessage(error.message);
+      },
+      (status, errorMsg) => {
+        setSyncStatus(status);
+        if (errorMsg) setSyncErrorMessage(errorMsg);
       }
-    });
+    );
 
     return () => unsubscribe();
-  }, [settings.soundEnabled, settings.vibrationEnabled]);
+  }, [settings.soundEnabled, settings.vibrationEnabled, syncSubscriptionKey]);
 
   const handleDismissCustomerAlert = (alertId: string) => {
     setCustomerAlerts((prev) => {
@@ -326,6 +348,47 @@ export default function App() {
     pushCloudUpdate({ settings: newSettings });
   };
 
+  // Atomic multi-entity persistence (both local and cloud)
+  const syncBatchState = (updates: {
+    sessions?: Session[];
+    machines?: Machine[];
+    transactions?: TransactionRecord[];
+    queue?: QueueItem[];
+    settings?: AppSettings;
+    assetTypes?: AssetType[];
+    packages?: RidePackage[];
+  }) => {
+    if (updates.sessions) {
+      setSessions(updates.sessions);
+      saveSessions(updates.sessions);
+    }
+    if (updates.machines) {
+      setMachines(updates.machines);
+      saveMachines(updates.machines);
+    }
+    if (updates.transactions) {
+      setTransactions(updates.transactions);
+      saveTransactions(updates.transactions);
+    }
+    if (updates.queue) {
+      setQueue(updates.queue);
+      saveQueue(updates.queue);
+    }
+    if (updates.settings) {
+      setSettings(updates.settings);
+      saveSettings(updates.settings);
+    }
+    if (updates.assetTypes) {
+      setAssetTypes(updates.assetTypes);
+      saveAssetTypes(updates.assetTypes);
+    }
+    if (updates.packages) {
+      setPackages(updates.packages);
+      savePackages(updates.packages);
+    }
+    pushCloudUpdate(updates);
+  };
+
   // 4. Session Operations
   const handleStartSession = (
     machineId: string,
@@ -363,21 +426,18 @@ export default function App() {
       status: 'ACTIVE',
     };
 
-    // Update sessions
+    // Update sessions, machine status, and queue atomically
     const updatedSessions = [...sessions.filter((s) => s.machineId !== machineId), newSession];
-    updateSessionsState(updatedSessions);
-
-    // Update machine status
     const updatedMachines = machines.map((m) =>
       m.id === machineId ? { ...m, status: 'RUNNING' as const, activeSessionId: newSessionId } : m
     );
-    updateMachinesState(updatedMachines);
+    const updatedQueue = queueItemId ? queue.filter((q) => q.id !== queueItemId) : undefined;
 
-    // If from queue, remove from queue
-    if (queueItemId) {
-      const updatedQueue = queue.filter((q) => q.id !== queueItemId);
-      updateQueueState(updatedQueue);
-    }
+    syncBatchState({
+      sessions: updatedSessions,
+      machines: updatedMachines,
+      ...(updatedQueue ? { queue: updatedQueue } : {}),
+    });
 
     playSessionStartSound(settings.soundEnabled);
 
@@ -434,13 +494,11 @@ export default function App() {
     const updatedSessions = sessions.map((s) =>
       s.id === session.id ? { ...s, status: 'COMPLETED' as const, completedAt } : s
     );
-    updateSessionsState(updatedSessions);
 
     // 2. Free machine to READY
     const updatedMachines = machines.map((m) =>
       m.id === session.machineId ? { ...m, status: 'READY' as const, activeSessionId: undefined } : m
     );
-    updateMachinesState(updatedMachines);
 
     // 3. Create Transaction Record
     const newTx: TransactionRecord = {
@@ -457,7 +515,13 @@ export default function App() {
       status: 'COMPLETED',
       createdAt: completedAt,
     };
-    updateTransactionsState([newTx, ...transactions]);
+    const updatedTransactions = [newTx, ...transactions];
+
+    syncBatchState({
+      sessions: updatedSessions,
+      machines: updatedMachines,
+      transactions: updatedTransactions,
+    });
   };
 
   const handleExtendSession = (session: Session, extensionMinutes: number, extensionPrice = 0) => {
@@ -486,13 +550,15 @@ export default function App() {
       };
     });
 
-    updateSessionsState(updatedSessions);
-
     // Ensure machine is back to RUNNING
     const updatedMachines = machines.map((m) =>
       m.id === session.machineId ? { ...m, status: 'RUNNING' as const } : m
     );
-    updateMachinesState(updatedMachines);
+
+    syncBatchState({
+      sessions: updatedSessions,
+      machines: updatedMachines,
+    });
   };
 
   const handleCancelSession = (session: Session) => {
@@ -501,13 +567,16 @@ export default function App() {
     const updatedSessions = sessions.map((s) =>
       s.id === session.id ? { ...s, status: 'CANCELLED' as const } : s
     );
-    updateSessionsState(updatedSessions);
 
     // Free machine
     const updatedMachines = machines.map((m) =>
       m.id === session.machineId ? { ...m, status: 'READY' as const, activeSessionId: undefined } : m
     );
-    updateMachinesState(updatedMachines);
+
+    syncBatchState({
+      sessions: updatedSessions,
+      machines: updatedMachines,
+    });
   };
 
   const handleToggleMaintenance = (machine: Machine) => {
@@ -748,6 +817,8 @@ export default function App() {
         onToggleWakeLock={handleToggleWakeLock}
         isAdminMode={isAdminMode}
         onToggleAdminMode={handleToggleAdminMode}
+        syncStatus={syncStatus}
+        onOpenCloudSync={() => setCloudSyncModalOpen(true)}
       />
 
       {/* Real-time Customer Alarm Stopped / Early Finish Notification Banner */}
@@ -955,6 +1026,16 @@ export default function App() {
       {/* 10. PWA Offline Status Toast Indicator & PWA Install Banner */}
       <OfflineBanner />
       <PwaInstallPrompt />
+
+      {/* 11. Modal Status Penyelarasan Cloud Multi-Device */}
+      <CloudSyncModal
+        isOpen={cloudSyncModalOpen}
+        onClose={() => setCloudSyncModalOpen(false)}
+        syncStatus={syncStatus}
+        errorMessage={syncErrorMessage}
+        projectId={firebaseConfig.projectId || 'syncrozz-platform'}
+        onRefreshSync={() => setSyncSubscriptionKey((k) => k + 1)}
+      />
     </div>
   );
 }

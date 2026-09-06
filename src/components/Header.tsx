@@ -15,8 +15,10 @@ import {
   Activity,
   Shield,
   Radio,
+  Cloud,
 } from 'lucide-react';
 import { AppSettings, Machine, Session, QueueItem } from '../types';
+import { CloudSyncStatus } from '../services/firebaseSync';
 import { deriveMachineStatus } from '../utils/format';
 import { playTapSound } from '../utils/sound';
 
@@ -35,6 +37,8 @@ interface HeaderProps {
   onToggleWakeLock: () => void;
   isAdminMode: boolean;
   onToggleAdminMode: () => void;
+  syncStatus?: CloudSyncStatus;
+  onOpenCloudSync?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -52,6 +56,8 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleWakeLock,
   isAdminMode,
   onToggleAdminMode,
+  syncStatus = 'CONNECTING',
+  onOpenCloudSync,
 }) => {
   const [timeString, setTimeString] = useState<string>('');
   const [dateString, setDateString] = useState<string>('');
@@ -155,6 +161,27 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Top Right Admin & Settings Controls */}
             <div className="flex items-center gap-1 shrink-0">
+              {onOpenCloudSync && (
+                <button
+                  type="button"
+                  id="btn-mobile-cloud-sync"
+                  onClick={onOpenCloudSync}
+                  className={`px-1.5 py-1 rounded-lg border text-[10px] flex items-center gap-1 transition-all active:scale-95 cursor-pointer ${
+                    syncStatus === 'CONNECTED'
+                      ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400'
+                      : syncStatus === 'CONNECTING'
+                      ? 'bg-amber-500/10 border-amber-500/40 text-amber-400 animate-pulse'
+                      : 'bg-rose-500/10 border-rose-500/40 text-rose-400'
+                  }`}
+                  title={syncStatus === 'CONNECTED' ? 'Cloud Sync Aktif' : 'Status Cloud Sync'}
+                >
+                  <Cloud className="w-3 h-3" />
+                  <span className={`w-1.5 h-1.5 rounded-full ${
+                    syncStatus === 'CONNECTED' ? 'bg-emerald-400' : syncStatus === 'CONNECTING' ? 'bg-amber-400' : 'bg-rose-400 animate-ping'
+                  }`} />
+                </button>
+              )}
+
               <button
                 type="button"
                 id="btn-mobile-admin-access"
@@ -345,6 +372,30 @@ export const Header: React.FC<HeaderProps> = ({
                     <BellRing className="w-3.5 h-3.5 text-white" />
                     <span>{timeUpCount} TAMAT</span>
                   </div>
+                )}
+
+                {/* CLOUD SYNC MODULE */}
+                {onOpenCloudSync && (
+                  <button
+                    type="button"
+                    onClick={onOpenCloudSync}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs font-bold shadow-xs whitespace-nowrap transition-all cursor-pointer ${
+                      syncStatus === 'CONNECTED'
+                        ? 'bg-[#151f2e] border-emerald-500/30 text-emerald-400 hover:border-emerald-400'
+                        : syncStatus === 'CONNECTING'
+                        ? 'bg-[#151f2e] border-amber-500/30 text-amber-400 animate-pulse'
+                        : 'bg-rose-950/40 border-rose-500/50 text-rose-300 hover:border-rose-400'
+                    }`}
+                    title="Klik untuk lihat status penyegerakan Cloud Multi-Device"
+                  >
+                    <Cloud className="w-3.5 h-3.5" />
+                    <span className={`w-1.5 h-1.5 rounded-full ${
+                      syncStatus === 'CONNECTED' ? 'bg-emerald-400' : syncStatus === 'CONNECTING' ? 'bg-amber-400' : 'bg-rose-400 animate-ping'
+                    }`} />
+                    <span className="font-chakra text-[10px] font-black tracking-wider uppercase">
+                      {syncStatus === 'CONNECTED' ? 'CLOUD SYNC' : syncStatus === 'CONNECTING' ? 'CONNECTING' : 'OFFLINE'}
+                    </span>
+                  </button>
                 )}
               </div>
 
