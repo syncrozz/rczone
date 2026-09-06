@@ -126,6 +126,7 @@ export default function App() {
 
   // Reference to track machine statuses to fire alarms only once on transition
   const previousStatusMap = useRef<Map<string, string>>(new Map());
+  const isFirstEvaluation = useRef<boolean>(true);
 
   // 1. Live Countdown Loop (every 500ms for smooth UI)
   useEffect(() => {
@@ -155,12 +156,12 @@ export default function App() {
 
       if (currentStatus === 'TIME_UP') {
         hasAnyTimeUp = true;
-        // Trigger alarm on first transition into TIME_UP
-        if (prevStatus !== 'TIME_UP') {
+        // Trigger alarm only on live transition into TIME_UP (not on initial cold page load)
+        if (!isFirstEvaluation.current && prevStatus !== 'TIME_UP') {
           playTimeUpAlarm(settings.soundEnabled, settings.alarmRepeat);
           triggerVibration([300, 150, 300, 150, 300], settings.vibrationEnabled);
         }
-      } else if (currentStatus === 'ENDING_SOON' && prevStatus !== 'ENDING_SOON' && prevStatus !== 'TIME_UP') {
+      } else if (currentStatus === 'ENDING_SOON' && !isFirstEvaluation.current && prevStatus !== 'ENDING_SOON' && prevStatus !== 'TIME_UP') {
         // Trigger ending soon warning ping
         playEndingSoonSound(settings.soundEnabled);
         triggerVibration([200, 100, 200], settings.vibrationEnabled);
@@ -168,6 +169,10 @@ export default function App() {
 
       previousStatusMap.current.set(machine.id, currentStatus);
     });
+
+    if (isFirstEvaluation.current) {
+      isFirstEvaluation.current = false;
+    }
 
     if (!hasAnyTimeUp) {
       stopAlarm();
@@ -191,16 +196,8 @@ export default function App() {
         setSyncErrorMessage(undefined);
 
         if (cloudData.machines !== undefined) {
-          setMachines((prevMachines) => {
-            const hasRunningLocal = prevMachines.some((m) => m.status === 'RUNNING');
-            const hasRunningCloud = cloudData.machines!.some((m) => m.status === 'RUNNING');
-            if (hasRunningLocal && !hasRunningCloud && (!cloudData.sessions || cloudData.sessions.length === 0)) {
-              pushCloudUpdate({ machines: prevMachines });
-              return prevMachines;
-            }
-            saveMachines(cloudData.machines!);
-            return cloudData.machines!;
-          });
+          setMachines(cloudData.machines);
+          saveMachines(cloudData.machines);
         }
         if (cloudData.assetTypes !== undefined) {
           const upgraded = upgradeAssetTypesWithImages(cloudData.assetTypes);
@@ -212,26 +209,18 @@ export default function App() {
           savePackages(cloudData.packages);
         }
         if (cloudData.sessions !== undefined) {
-          setSessions((prevSessions) => {
-            const hasActiveLocal = prevSessions.some((s) => s.status === 'ACTIVE');
-            if (cloudData.sessions!.length === 0 && hasActiveLocal) {
-              pushCloudUpdate({ sessions: prevSessions });
-              return prevSessions;
+          const withTokens = cloudData.sessions.map((s) => {
+            if (!s.publicSessionToken && s.id) {
+              const parts = s.id.split('_');
+              const token = parts.length >= 3 && parts[parts.length - 1].length >= 4
+                ? parts[parts.length - 1].toLowerCase()
+                : s.id.replace(/[^a-zA-Z0-9]/g, '').slice(-6).toLowerCase() || '74tw4i';
+              return { ...s, publicSessionToken: token };
             }
-
-            const withTokens = cloudData.sessions!.map((s) => {
-              if (!s.publicSessionToken && s.id) {
-                const parts = s.id.split('_');
-                const token = parts.length >= 3 && parts[parts.length - 1].length >= 4
-                  ? parts[parts.length - 1].toLowerCase()
-                  : s.id.replace(/[^a-zA-Z0-9]/g, '').slice(-6).toLowerCase() || '74tw4i';
-                return { ...s, publicSessionToken: token };
-              }
-              return s;
-            });
-            saveSessions(withTokens);
-            return withTokens;
+            return s;
           });
+          setSessions(withTokens);
+          saveSessions(withTokens);
         }
         if (cloudData.transactions !== undefined) {
           setTransactions(cloudData.transactions);
@@ -492,13 +481,14 @@ export default function App() {
         // Resuming
         const pausedDuration = s.pausedAt ? Date.now() - s.pausedAt : 0;
         const newAccumulated = s.accumulatedPauseMs + pausedDuration;
-        return {
+        const copy = {
           ...s,
           isPaused: false,
-          pausedAt: undefined,
           accumulatedPauseMs: newAccumulated,
           endTime: s.startTime + s.durationMinutes * 60 * 1000 + newAccumulated,
         };
+        delete copy.pausedAt;
+        return copy;
       }
     });
 
@@ -519,10 +509,15 @@ export default function App() {
       s.id === session.id ? { ...s, status: 'COMPLETED' as const, completedAt } : s
     );
 
-    // 2. Free machine to READY
-    const updatedMachines = machines.map((m) =>
-      m.id === session.machineId ? { ...m, status: 'READY' as const, activeSessionId: undefined } : m
-    );
+    // 2. Free machine to READY (cleanly remove activeSessionId)
+    const updatedMachines = machines.map((m) => {
+      if (m.id === session.machineId) {
+        const copy = { ...m, status: 'READY' as const };
+        delete copy.activeSessionId;
+        return copy;
+      }
+      return m;
+    });
 
     // 3. Create Transaction Record
     const newTx: TransactionRecord = {
@@ -533,7 +528,7 @@ export default function App() {
       packageName: session.packageName,
       durationMinutes: session.durationMinutes,
       price: session.price,
-      customerName: session.customerName,
+      customerName: session.customerName || 'Walk-in',
       startTime: session.startTime,
       endTime: completedAt,
       status: 'COMPLETED',
@@ -563,15 +558,16 @@ export default function App() {
         newEndTime = now + extensionMs;
       }
 
-      return {
+      const copy = {
         ...s,
         durationMinutes: s.durationMinutes + extensionMinutes,
         price: s.price + extensionPrice,
         endTime: newEndTime,
         extensionsCount: (s.extensionsCount || 0) + 1,
         isPaused: false,
-        pausedAt: undefined,
       };
+      delete copy.pausedAt;
+      return copy;
     });
 
     // Ensure machine is back to RUNNING
@@ -593,9 +589,14 @@ export default function App() {
     );
 
     // Free machine
-    const updatedMachines = machines.map((m) =>
-      m.id === session.machineId ? { ...m, status: 'READY' as const, activeSessionId: undefined } : m
-    );
+    const updatedMachines = machines.map((m) => {
+      if (m.id === session.machineId) {
+        const copy = { ...m, status: 'READY' as const };
+        delete copy.activeSessionId;
+        return copy;
+      }
+      return m;
+    });
 
     syncBatchState({
       sessions: updatedSessions,
@@ -797,11 +798,8 @@ export default function App() {
   };
 
   const handleCompleteSessionProtected = (session: Session) => {
-    handleRequireAdmin(
-      () => handleOpenCompleteModal(session),
-      'Tamatkan Sesi',
-      'Pengesahan PIN Admin diperlukan untuk menamatkan sesi ini.'
-    );
+    // Open completion modal directly so staff/admin can record collection and release machine seamlessly
+    handleOpenCompleteModal(session);
   };
 
   const handleExtendSessionProtected = (session: Session, extensionMinutes: number, extensionPrice = 0) => {

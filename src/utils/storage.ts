@@ -266,6 +266,31 @@ export function loadInitialData(): {
     } catch {
       settings = DEFAULT_SETTINGS;
     }
+
+    // Ensure machine and session consistency on load:
+    // If a machine is READY, it cannot have an activeSessionId
+    machines = machines.map((m) => {
+      if (m.status === 'READY' && m.activeSessionId) {
+        const copy = { ...m };
+        delete copy.activeSessionId;
+        return copy;
+      }
+      return m;
+    });
+
+    // If a machine is not RUNNING with this session ID, the session cannot remain ACTIVE
+    const runningMachineActiveIds = new Set(
+      machines
+        .filter((m) => m.status === 'RUNNING' && m.activeSessionId)
+        .map((m) => m.activeSessionId)
+    );
+
+    sessions = sessions.map((s) => {
+      if (s.status === 'ACTIVE' && !runningMachineActiveIds.has(s.id)) {
+        return { ...s, status: 'COMPLETED' as const, completedAt: s.completedAt || Date.now() };
+      }
+      return s;
+    });
   }
 
   return { machines, assetTypes, packages, sessions, transactions, queue, settings };

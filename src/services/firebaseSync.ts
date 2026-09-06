@@ -74,6 +74,14 @@ export interface CloudSystemState {
 }
 
 /**
+ * Recursively strip undefined values so Firestore setDoc never throws Unsupported field value: undefined
+ */
+export function sanitizeForFirestore<T>(data: T): T {
+  if (data === undefined || data === null) return data;
+  return JSON.parse(JSON.stringify(data));
+}
+
+/**
  * Diagnostic test to verify live connection to Cloud Firestore
  */
 export async function testFirestoreConnection(): Promise<{ ok: boolean; message: string }> {
@@ -135,7 +143,8 @@ export function subscribeToCloudSync(
         onUpdate(data);
       } else if (!options?.isReadOnly && options?.initialAdminState) {
         // Admin first-time seeding with existing local state (never wipe with empty sessions)
-        setDoc(docRef, { ...options.initialAdminState, updatedAt: Date.now() }, { merge: true }).catch((err) =>
+        const sanitizedSeed = sanitizeForFirestore({ ...options.initialAdminState, updatedAt: Date.now() });
+        setDoc(docRef, sanitizedSeed, { merge: true }).catch((err) =>
           console.warn('Initial cloud seed error:', err)
         );
       }
@@ -164,14 +173,11 @@ export async function pushCloudUpdate(partialState: Partial<CloudSystemState>): 
   try {
     await ensureAuth();
     const docRef = doc(db, SYNC_COLLECTION, SYNC_DOC_ID);
-    await setDoc(
-      docRef,
-      {
-        ...partialState,
-        updatedAt: Date.now(),
-      },
-      { merge: true }
-    );
+    const cleanPayload = sanitizeForFirestore({
+      ...partialState,
+      updatedAt: Date.now(),
+    });
+    await setDoc(docRef, cleanPayload, { merge: true });
     lastSyncedTimestamp = Date.now();
     return true;
   } catch (err) {
@@ -238,15 +244,13 @@ export async function notifyCustomerAlarmStopped(
     // Keep max 20 latest alerts
     const updatedAlerts = [newAlert, ...currentAlerts.filter((a) => now - a.timestamp < 3600000)].slice(0, 20);
 
-    await setDoc(
-      docRef,
-      {
-        sessions: updatedSessions,
-        customerAlerts: updatedAlerts,
-        updatedAt: now,
-      },
-      { merge: true }
-    );
+    const cleanPayload = sanitizeForFirestore({
+      sessions: updatedSessions,
+      customerAlerts: updatedAlerts,
+      updatedAt: now,
+    });
+
+    await setDoc(docRef, cleanPayload, { merge: true });
   } catch (err) {
     console.warn('Error notifying customer alarm stop to admin:', err);
   }
