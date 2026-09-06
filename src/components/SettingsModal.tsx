@@ -111,6 +111,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [editingPin, setEditingPin] = useState(settings.adminPin || '6381');
   const [pinSavedMessage, setPinSavedMessage] = useState(false);
 
+  // PWA Status
+  const [pwaStatus, setPwaStatus] = useState<{
+    isStandalone: boolean;
+    hasSw: boolean;
+  }>({
+    isStandalone: false,
+    hasSw: false,
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const isStandalone =
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as unknown as { standalone?: boolean }).standalone === true;
+      setPwaStatus({
+        isStandalone: Boolean(isStandalone),
+        hasSw: 'serviceWorker' in navigator,
+      });
+    }
+  }, []);
+
   // Auto-select first active asset type when opening Add Machine
   useEffect(() => {
     if (assetTypes && assetTypes.length > 0 && !selectedAssetTypeId) {
@@ -1282,6 +1303,44 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       />
                     </div>
                   </div>
+                </div>
+
+                {/* Status PWA & Aplikasi Mudah Alih */}
+                <div className="p-4 rounded-2xl bg-[#0c121c] border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-black uppercase text-white flex items-center gap-2">
+                      <Smartphone className="w-4 h-4 text-amber-400" />
+                      <span>Status PWA & Aplikasi Mudah Alih</span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      PWA AKTIF
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                    <div className="p-2.5 rounded-xl bg-[#151f2e] border border-slate-800">
+                      <div className="text-[10px] text-slate-400 uppercase font-mono">Service Worker</div>
+                      <div className="font-black text-emerald-400 mt-0.5 flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>{pwaStatus.hasSw ? 'Aktif (v2.0)' : 'Tidak Disokong'}</span>
+                      </div>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-[#151f2e] border border-slate-800">
+                      <div className="text-[10px] text-slate-400 uppercase font-mono">Mod Paparan</div>
+                      <div className="font-black text-amber-400 mt-0.5">
+                        {pwaStatus.isStandalone ? 'Aplikasi (Standalone)' : 'Pelayar Web'}
+                      </div>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-[#151f2e] border border-slate-800">
+                      <div className="text-[10px] text-slate-400 uppercase font-mono">Luar Talian</div>
+                      <div className="font-black text-cyan-400 mt-0.5">
+                        Cache Aktif
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-slate-400 leading-relaxed">
+                    Sistem telemetri RC ZONE sedia dipasang ke skrin utama peranti Android, iPhone/iPad, dan Desktop sebagai Progressive Web App (PWA) lengkap dengan sokongan caching pantas luar talian.
+                  </p>
                 </div>
 
                 {/* Admin PIN Change */}

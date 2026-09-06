@@ -45,7 +45,7 @@ export function PwaInstallPrompt() {
     window.addEventListener('appinstalled', () => {
       setDeferredPrompt(null);
       setIsStandalone(true);
-      console.log('[PWA] RC Fun Ride Manager was successfully installed!');
+      console.log('[PWA] RC ZONE was successfully installed!');
     });
 
     return () => {

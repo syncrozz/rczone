@@ -1,7 +1,7 @@
-// Service Worker for RC Fun Ride Manager
-// Version: 1.0.0 - Production Safe Caching Strategy
+// Service Worker for RC ZONE Motorsport Manager
+// Version: 2.0.0 - Production Safe Caching Strategy
 
-const CACHE_VERSION = 'rc-funride-v1.0.0';
+const CACHE_VERSION = 'rc-zone-v2.0.0';
 const STATIC_CACHE = `static-${CACHE_VERSION}`;
 
 // Core static assets to pre-cache on install

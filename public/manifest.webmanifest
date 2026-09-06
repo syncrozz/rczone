@@ -1,7 +1,8 @@
 {
-  "name": "RC Fun Ride Manager",
-  "short_name": "RC Fun Ride",
-  "description": "Sistem Kawalan Telemetri & Pengurusan Sesi RC Zone Motorsport",
+  "id": "/",
+  "name": "RC ZONE — Motorsport Telemetry & Control Board",
+  "short_name": "RC ZONE",
+  "description": "Sistem Pengurusan Kawalan & Pemasa Telemetri RC ZONE Motorsport",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
