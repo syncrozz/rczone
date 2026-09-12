@@ -1,7 +1,7 @@
 // Service Worker for RC ZONE Motorsport Manager
-// Version: 2.0.0 - Production Safe Caching Strategy
+// Version: 2.1.0 - Production Safe Caching Strategy
 
-const CACHE_VERSION = 'rc-zone-v2.0.0';
+const CACHE_VERSION = 'rc-zone-v2.1.0';
 const STATIC_CACHE = `static-${CACHE_VERSION}`;
 
 // Core static assets to pre-cache on install
