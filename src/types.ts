@@ -12,6 +12,8 @@ export interface AssetType {
 
 export type MachineStatus = 'READY' | 'RUNNING' | 'ENDING_SOON' | 'TIME_UP' | 'MAINTENANCE';
 
+export type AssetSortOption = 'DEFAULT' | 'NAME_ASC' | 'NAME_DESC' | 'ASSET_TYPE' | 'STATUS';
+
 export interface Machine {
   id: string;
   name: string;

@@ -1,4 +1,4 @@
-import { Machine, RidePackage, Session, TransactionRecord, QueueItem, AppSettings, AssetType } from '../types';
+import { Machine, RidePackage, Session, TransactionRecord, QueueItem, AppSettings, AssetType, AssetSortOption, MachineStatus } from '../types';
 
 const STORAGE_KEYS = {
   INITIALIZED: 'rc_fun_ride_initialized_v1',
@@ -176,6 +176,114 @@ export function getAssetCategoryTextColor(
   }
 
   return 'text-slate-100';
+}
+
+/**
+ * Resolves category priority ranking:
+ * 1. Excavator (EXCAVATOR 1, 2, 3...)
+ * 2. Bulldozer (BULLDOZER 1, 2...)
+ * 3. Dump Truck (DUMP TRUCK 1, 2...)
+ * 4. Crane
+ * 5. Loader
+ * 100. Other / custom categories
+ */
+export function getAssetCategoryRank(
+  machine: Machine,
+  assetTypes?: AssetType[]
+): { rank: number; categoryName: string } {
+  const resolved = resolveAssetType(machine.type || machine.typeId, assetTypes);
+  const catName = (resolved?.name || machine.customTypeLabel || machine.type || 'Lain-lain').trim();
+  const searchStr = `${catName} ${machine.type || ''} ${machine.typeId || ''} ${machine.name || ''}`.toLowerCase();
+
+  let rank = 100;
+  if (searchStr.includes('excavator') || searchStr.includes('exc')) {
+    rank = 1;
+  } else if (searchStr.includes('bulldozer') || searchStr.includes('bdz') || searchStr.includes('dozer')) {
+    rank = 2;
+  } else if (searchStr.includes('dump') || searchStr.includes('truck') || searchStr.includes('dtk')) {
+    rank = 3;
+  } else if (searchStr.includes('crane')) {
+    rank = 4;
+  } else if (searchStr.includes('loader')) {
+    rank = 5;
+  }
+
+  return { rank, categoryName: catName };
+}
+
+/**
+ * Pure sorting function for assets with live status.
+ * Guarantees immutability (does not mutate original array or objects).
+ * Supports:
+ * - 'DEFAULT': Preserves initial array sequence
+ * - 'NAME_ASC': Natural alphanumeric A -> Z
+ * - 'NAME_DESC': Natural alphanumeric Z -> A
+ * - 'ASSET_TYPE': Groups by category (Excavator -> Bulldozer -> Dump Truck) then sorts naturally within category
+ * - 'STATUS': Operational priority (TIME_UP -> ENDING_SOON -> RUNNING -> READY -> MAINTENANCE)
+ */
+export function sortMachinesWithStatus<T extends { machine: Machine; liveStatus?: MachineStatus }>(
+  items: T[],
+  sortOption: AssetSortOption,
+  assetTypes?: AssetType[]
+): T[] {
+  // Create shallow copy to ensure original array is untouched
+  const list = [...items];
+
+  if (sortOption === 'DEFAULT') {
+    return list;
+  }
+
+  if (sortOption === 'NAME_ASC') {
+    return list.sort((a, b) =>
+      a.machine.name.localeCompare(b.machine.name, undefined, { numeric: true, sensitivity: 'base' })
+    );
+  }
+
+  if (sortOption === 'NAME_DESC') {
+    return list.sort((a, b) =>
+      b.machine.name.localeCompare(a.machine.name, undefined, { numeric: true, sensitivity: 'base' })
+    );
+  }
+
+  if (sortOption === 'ASSET_TYPE') {
+    return list.sort((a, b) => {
+      const catA = getAssetCategoryRank(a.machine, assetTypes);
+      const catB = getAssetCategoryRank(b.machine, assetTypes);
+
+      if (catA.rank !== catB.rank) {
+        return catA.rank - catB.rank;
+      }
+
+      const catComp = catA.categoryName.localeCompare(catB.categoryName, undefined, { sensitivity: 'base' });
+      if (catComp !== 0) {
+        return catComp;
+      }
+
+      // Natural sort within category (e.g. EXCAVATOR 1, 2, 3, 4, 5, 6, 7)
+      return a.machine.name.localeCompare(b.machine.name, undefined, { numeric: true, sensitivity: 'base' });
+    });
+  }
+
+  if (sortOption === 'STATUS') {
+    const statusPriority: Record<string, number> = {
+      TIME_UP: 1,
+      ENDING_SOON: 2,
+      RUNNING: 3,
+      READY: 4,
+      MAINTENANCE: 5,
+    };
+
+    return list.sort((a, b) => {
+      const pA = statusPriority[a.liveStatus || a.machine.status] ?? 99;
+      const pB = statusPriority[b.liveStatus || b.machine.status] ?? 99;
+      if (pA !== pB) {
+        return pA - pB;
+      }
+      return a.machine.name.localeCompare(b.machine.name, undefined, { numeric: true, sensitivity: 'base' });
+    });
+  }
+
+  return list;
 }
 
 export function loadInitialData(): {

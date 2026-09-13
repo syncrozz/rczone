@@ -14,11 +14,13 @@ import {
   Settings,
   Boxes,
   Calendar,
+  ArrowUpDown,
 } from 'lucide-react';
-import { Machine, Session, AppSettings, RidePackage, QueueItem, TransactionRecord, AssetType } from '../types';
+import { Machine, Session, AppSettings, RidePackage, QueueItem, TransactionRecord, AssetType, AssetSortOption } from '../types';
 import { MachineCard } from './MachineCard';
 import { deriveMachineStatus, isToday, formatDateShort } from '../utils/format';
 import { playTapSound } from '../utils/sound';
+import { sortMachinesWithStatus } from '../utils/storage';
 
 interface ControlBoardProps {
   machines: Machine[];
@@ -121,6 +123,33 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
     if (filter === 'RUNNING') return liveStatus === 'RUNNING' || liveStatus === 'ENDING_SOON';
     return liveStatus === filter;
   });
+
+  // Sorting state for asset management
+  const [sortOption, setSortOption] = useState<AssetSortOption>(() => {
+    try {
+      const saved = localStorage.getItem('rc_asset_sort_option');
+      if (saved && ['DEFAULT', 'NAME_ASC', 'NAME_DESC', 'ASSET_TYPE', 'STATUS'].includes(saved)) {
+        return saved as AssetSortOption;
+      }
+    } catch {
+      // ignore
+    }
+    return 'DEFAULT';
+  });
+
+  const handleSortChange = (newSort: AssetSortOption) => {
+    setSortOption(newSort);
+    try {
+      localStorage.setItem('rc_asset_sort_option', newSort);
+    } catch {
+      // ignore
+    }
+  };
+
+  // Sort filtered machines without mutating original list
+  const sortedAndFilteredMachines = useMemo(() => {
+    return sortMachinesWithStatus(filteredMachines, sortOption, assetTypes);
+  }, [filteredMachines, sortOption, assetTypes]);
 
   return (
     <main className="w-full max-w-7xl mx-auto px-2 sm:px-6 py-3 sm:py-6 space-y-4 sm:space-y-6 min-w-0 overflow-x-hidden pb-8 sm:pb-12">
@@ -265,9 +294,9 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
           )}
         </div>
 
-        {/* ROW 2 (or Right Group): Search Input & Quick Asset Settings Button */}
-        <div className="flex items-center gap-2 w-full lg:w-auto min-w-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-800/80">
-          <div className="relative flex-1 lg:w-64 min-w-0">
+        {/* ROW 2 (or Right Group): Search Input, Sorting & Quick Asset Settings Button */}
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full lg:w-auto min-w-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-800/80">
+          <div className="relative flex-1 lg:w-56 min-w-[130px]">
             <Search className="w-3.5 h-3.5 text-amber-400/80 absolute left-3 top-2.5" />
             <input
               type="text"
@@ -276,6 +305,36 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
               placeholder="Cari mesin / ID unit..."
               className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-slate-700/80 bg-[#0c121c] text-white placeholder-slate-500 text-xs font-mono focus:border-amber-400 focus:ring-1 focus:ring-amber-400/40 focus:outline-none"
             />
+          </div>
+
+          {/* Asset Sorting Dropdown */}
+          <div className="relative shrink-0">
+            <div
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border bg-[#0c121c] transition-all text-xs font-mono ${
+                sortOption !== 'DEFAULT'
+                  ? 'border-amber-400 text-amber-300 ring-1 ring-amber-400/30 shadow-xs'
+                  : 'border-slate-700/80 text-slate-300 hover:border-slate-600'
+              }`}
+            >
+              <ArrowUpDown className={`w-3.5 h-3.5 shrink-0 ${sortOption !== 'DEFAULT' ? 'text-amber-400' : 'text-slate-400'}`} />
+              <label htmlFor="select-asset-sort" className="sr-only">Susun Aset</label>
+              <select
+                id="select-asset-sort"
+                value={sortOption}
+                onChange={(e) => {
+                  playTapSound(settings.soundEnabled);
+                  handleSortChange(e.target.value as AssetSortOption);
+                }}
+                className="bg-transparent text-white font-mono font-bold text-xs focus:outline-none cursor-pointer pr-1 appearance-none sm:appearance-auto"
+                title="Pilihan Susunan Aset"
+              >
+                <option value="DEFAULT" className="bg-[#0c121c] text-white">Default</option>
+                <option value="NAME_ASC" className="bg-[#0c121c] text-white">Nama A → Z</option>
+                <option value="NAME_DESC" className="bg-[#0c121c] text-white">Nama Z → A</option>
+                <option value="ASSET_TYPE" className="bg-[#0c121c] text-white">Jenis Aset</option>
+                <option value="STATUS" className="bg-[#0c121c] text-white">Status</option>
+              </select>
+            </div>
           </div>
 
           <button
@@ -296,7 +355,7 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
       </div>
 
       {/* MOTORSPORT MACHINE GRID */}
-      {filteredMachines.length === 0 ? (
+      {sortedAndFilteredMachines.length === 0 ? (
         <div className="py-16 px-4 text-center rounded-3xl bg-[#101723] border border-dashed border-slate-800 shadow-xl">
           <Truck className="w-12 h-12 text-amber-400/40 mx-auto mb-3" />
           <h3 className="text-base font-black text-white uppercase tracking-wider font-mono">
@@ -336,7 +395,7 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
           </div>
 
           {/* 1 Column x Many Rows List */}
-          {filteredMachines.map(({ machine, activeSession }) => (
+          {sortedAndFilteredMachines.map(({ machine, activeSession }) => (
             <MachineCard
               key={machine.id}
               machine={machine}

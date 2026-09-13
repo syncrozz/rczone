@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   X, 
   Settings, 
@@ -26,9 +26,10 @@ import {
   Tag,
   Boxes,
   Truck,
+  ArrowUpDown,
 } from 'lucide-react';
-import { Machine, RidePackage, AppSettings, MachineType, AssetType } from '../types';
-import { resolveAssetType, getAssetCategoryTextColor } from '../utils/storage';
+import { Machine, RidePackage, AppSettings, MachineType, AssetType, AssetSortOption } from '../types';
+import { resolveAssetType, getAssetCategoryTextColor, sortMachinesWithStatus } from '../utils/storage';
 import { AssetIcon, isImageUrl } from './AssetIcon';
 import { playTapSound, playTimeUpAlarm, playEndingSoonSound } from '../utils/sound';
 
@@ -93,6 +94,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   // Edit existing machine state
   const [editingMachineId, setEditingMachineId] = useState<string | null>(null);
   const [editingMachineName, setEditingMachineName] = useState<string>('');
+
+  // Asset sorting preference
+  const [assetSortOption, setAssetSortOption] = useState<AssetSortOption>(() => {
+    try {
+      const saved = localStorage.getItem('rc_asset_sort_option');
+      if (saved && ['DEFAULT', 'NAME_ASC', 'NAME_DESC', 'ASSET_TYPE', 'STATUS'].includes(saved)) {
+        return saved as AssetSortOption;
+      }
+    } catch {
+      // ignore
+    }
+    return 'DEFAULT';
+  });
+
+  const sortedSettingsMachines = useMemo(() => {
+    const wrapped = machines.map((m) => ({ machine: m, liveStatus: m.status }));
+    return sortMachinesWithStatus(wrapped, assetSortOption, assetTypes).map((item) => item.machine);
+  }, [machines, assetSortOption, assetTypes]);
 
   const handleStartEditMachine = (m: Machine) => {
     playTapSound(settings.soundEnabled);
@@ -527,6 +546,46 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               {/* Machine Items List */}
               <div className="space-y-2">
+                {machines.length > 1 && (
+                  <div className="flex items-center justify-between gap-2 px-1 py-1">
+                    <span className="text-[11px] font-mono text-slate-400 font-bold uppercase">
+                      {machines.length} UNIT MESIN
+                    </span>
+                    <div
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border bg-[#0c121c] text-xs font-mono transition-all ${
+                        assetSortOption !== 'DEFAULT'
+                          ? 'border-amber-400 ring-1 ring-amber-400/30 text-amber-300'
+                          : 'border-slate-700/80 text-slate-300 hover:border-slate-600'
+                      }`}
+                    >
+                      <ArrowUpDown className={`w-3.5 h-3.5 shrink-0 ${assetSortOption !== 'DEFAULT' ? 'text-amber-400' : 'text-slate-400'}`} />
+                      <label htmlFor="select-settings-asset-sort" className="sr-only">Susun Aset</label>
+                      <select
+                        id="select-settings-asset-sort"
+                        value={assetSortOption}
+                        onChange={(e) => {
+                          playTapSound(settings.soundEnabled);
+                          const val = e.target.value as AssetSortOption;
+                          setAssetSortOption(val);
+                          try {
+                            localStorage.setItem('rc_asset_sort_option', val);
+                          } catch {
+                            // ignore
+                          }
+                        }}
+                        className="bg-transparent text-white font-mono font-bold text-xs focus:outline-none cursor-pointer pr-1"
+                        title="Pilihan Susunan Aset"
+                      >
+                        <option value="DEFAULT" className="bg-[#0c121c] text-white">Default</option>
+                        <option value="NAME_ASC" className="bg-[#0c121c] text-white">Nama A → Z</option>
+                        <option value="NAME_DESC" className="bg-[#0c121c] text-white">Nama Z → A</option>
+                        <option value="ASSET_TYPE" className="bg-[#0c121c] text-white">Jenis Aset</option>
+                        <option value="STATUS" className="bg-[#0c121c] text-white">Status</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+
                 {machines.length === 0 ? (
                   <div className="py-8 text-center bg-[#0c121c] border border-dashed border-slate-800 rounded-2xl">
                     <p className="text-xs text-slate-400 font-bold">
@@ -534,7 +593,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </p>
                   </div>
                 ) : (
-                  machines.map((m) => {
+                  sortedSettingsMachines.map((m) => {
                     const resolved = resolveAssetType(m.type || m.typeId, assetTypes);
                     const isEditingThis = editingMachineId === m.id;
 
