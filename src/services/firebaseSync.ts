@@ -11,6 +11,53 @@ export const auth = getFirebaseAuth()!;
 
 export type CloudSyncStatus = 'CONNECTING' | 'CONNECTED' | 'ERROR' | 'OFFLINE';
 
+export enum FirestoreOperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: FirestoreOperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  };
+}
+
+export function handleFirestoreError(error: unknown, operationType: FirestoreOperationType, path: string | null): FirestoreErrorInfo {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth?.currentUser?.uid,
+      email: auth?.currentUser?.email,
+      emailVerified: auth?.currentUser?.emailVerified,
+      isAnonymous: auth?.currentUser?.isAnonymous,
+      tenantId: auth?.currentUser?.tenantId,
+      providerInfo: auth?.currentUser?.providerData?.map((provider) => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || [],
+    },
+    operationType,
+    path,
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  return errInfo;
+}
+
 export interface CloudSyncInfo {
   status: CloudSyncStatus;
   errorMessage?: string;
@@ -96,6 +143,7 @@ export async function testFirestoreConnection(): Promise<{ ok: boolean; message:
     currentSyncError = undefined;
     return { ok: true, message: 'Sambungan Cloud Firestore berjaya dan disahkan aktif.' };
   } catch (err: unknown) {
+    handleFirestoreError(err, FirestoreOperationType.GET, `${SYNC_COLLECTION}/${SYNC_DOC_ID}`);
     const rawMsg = err instanceof Error ? err.message : String(err);
     currentSyncStatus = 'ERROR';
     let friendlyMsg = rawMsg;
@@ -150,6 +198,7 @@ export function subscribeToCloudSync(
       }
     },
     (error) => {
+      handleFirestoreError(error, FirestoreOperationType.GET, `${SYNC_COLLECTION}/${SYNC_DOC_ID}`);
       console.warn('Realtime cloud sync listener error:', error);
       currentSyncStatus = 'ERROR';
       const rawMsg = error.message || String(error);
@@ -181,6 +230,7 @@ export async function pushCloudUpdate(partialState: Partial<CloudSystemState>): 
     lastSyncedTimestamp = Date.now();
     return true;
   } catch (err) {
+    handleFirestoreError(err, FirestoreOperationType.WRITE, `${SYNC_COLLECTION}/${SYNC_DOC_ID}`);
     console.warn('Error pushing update to Cloud Firestore:', err);
     currentSyncStatus = 'ERROR';
     const rawMsg = err instanceof Error ? err.message : String(err);

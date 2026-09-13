@@ -17,11 +17,10 @@ import {
   Zap,
   QrCode,
   BellRing,
-  Lock,
 } from 'lucide-react';
 import { Machine, Session, MachineStatus, AppSettings, AssetType } from '../types';
 import { calculateSessionTime, deriveMachineStatus, formatClockTime, formatTimeRemaining } from '../utils/format';
-import { resolveAssetType } from '../utils/storage';
+import { resolveAssetType, getAssetCategoryTextColor } from '../utils/storage';
 import { AssetIcon } from './AssetIcon';
 import { playTapSound } from '../utils/sound';
 
@@ -32,7 +31,7 @@ interface MachineCardProps {
   settings: AppSettings;
   assetTypes?: AssetType[];
   isAdminMode?: boolean;
-  onStartSession: (machine: Machine) => void;
+  onStartSession: (machine: Machine, setRemaining?: boolean) => void;
   onPauseResumeSession: (session: Session) => void;
   onCompleteSession: (session: Session) => void;
   onExtendSession: (session: Session, minutes: number, price?: number) => void;
@@ -71,6 +70,7 @@ export const MachineCard: React.FC<MachineCardProps> = ({
 
   // Dynamic Asset Type resolution
   const matchedAssetType = resolveAssetType(machine.type || machine.typeId, assetTypes);
+  const categoryTextColor = getAssetCategoryTextColor(machine, matchedAssetType.name);
 
   // Row Styling by Status
   let rowBorderClass = 'border-slate-800/90 hover:border-slate-700';
@@ -152,22 +152,34 @@ export const MachineCard: React.FC<MachineCardProps> = ({
               />
             </span>
             <div className="min-w-0 flex-1">
-              <h3 className="text-xs sm:text-sm lg:text-base font-chakra font-black text-white tracking-wide uppercase truncate leading-tight">
+              <h3 className={`text-xs sm:text-sm lg:text-base font-chakra font-black tracking-wide uppercase truncate leading-tight ${categoryTextColor}`}>
                 {machine.name}
               </h3>
-              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block truncate">
-                {machine.customTypeLabel || matchedAssetType.name}
-              </span>
             </div>
           </div>
 
-          {/* RIGHT SIDE: [● READY] + [▶ MULA SESI] DALAM ROW YANG SAMA */}
-          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          {/* RIGHT SIDE: [● READY] + [⏱️ SET BAKI] + [▶ MULA SESI] DALAM ROW YANG SAMA */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             {/* ● READY */}
             <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-slate-800/80 border border-slate-700 text-slate-300 font-mono text-[9px] sm:text-xs font-black tracking-wider uppercase whitespace-nowrap shadow-xs">
               <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400" />
               <span>READY</span>
             </div>
+
+            {/* [⏱️ SET BAKI] */}
+            <button
+              type="button"
+              id={`btn-set-remaining-${machine.id}`}
+              onClick={() => {
+                playTapSound(settings.soundEnabled);
+                onStartSession(machine, true);
+              }}
+              className="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-[#151f2e] hover:bg-[#1d2b3f] hover:border-amber-500/50 border border-slate-700 text-amber-400 font-chakra font-black text-[10px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1 sm:gap-1.5 transition-all cursor-pointer whitespace-nowrap min-h-[34px] sm:min-h-[38px] shadow-xs"
+              title="Set Masa Berbaki (Sesi Manual)"
+            >
+              <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400" />
+              <span className="hidden sm:inline">SET BAKI</span>
+            </button>
 
             {/* [▶ MULA SESI] */}
             <button
@@ -175,15 +187,11 @@ export const MachineCard: React.FC<MachineCardProps> = ({
               id={`btn-start-session-${machine.id}`}
               onClick={() => {
                 playTapSound(settings.soundEnabled);
-                onStartSession(machine);
+                onStartSession(machine, false);
               }}
               className="w-auto px-2.5 sm:px-5 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 active:scale-95 text-slate-950 font-chakra font-black text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1 sm:gap-2 shadow-md shadow-amber-500/25 transition-all cursor-pointer ring-1 ring-amber-300/40 whitespace-nowrap min-h-[34px] sm:min-h-[38px]"
             >
-              {isAdminMode ? (
-                <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-slate-950 text-slate-950 stroke-[3]" />
-              ) : (
-                <Lock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-950 stroke-[2.5]" />
-              )}
+              <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-slate-950 text-slate-950 stroke-[3]" />
               <span>MULA SESI</span>
             </button>
           </div>
@@ -207,14 +215,14 @@ export const MachineCard: React.FC<MachineCardProps> = ({
                   />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <h3 className="text-xs sm:text-sm font-chakra font-black text-white tracking-wide uppercase truncate leading-tight">
+                  <h3 className={`text-xs sm:text-sm font-chakra font-black tracking-wide uppercase truncate leading-tight ${categoryTextColor}`}>
                     {machine.name}
                   </h3>
-                  <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block truncate">
-                    {currentStatus === 'RUNNING' || currentStatus === 'ENDING_SOON' || currentStatus === 'TIME_UP'
-                      ? (session?.customerName ? `${session.customerName} (${session.packageName || 'Walk-in'})` : (machine.customTypeLabel || matchedAssetType.name))
-                      : (machine.customTypeLabel || matchedAssetType.name)}
-                  </span>
+                  {session?.customerName && (
+                    <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block truncate">
+                      {session.customerName} ({session.packageName || 'Walk-in'})
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -410,12 +418,9 @@ export const MachineCard: React.FC<MachineCardProps> = ({
                   />
                 </span>
                 <div className="min-w-0">
-                  <h3 className="text-sm sm:text-base font-chakra font-black text-white tracking-wide uppercase truncate leading-tight">
+                  <h3 className={`text-sm sm:text-base font-chakra font-black tracking-wide uppercase truncate leading-tight ${categoryTextColor}`}>
                     {machine.name}
                   </h3>
-                  <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block truncate">
-                    {machine.customTypeLabel || matchedAssetType.name}
-                  </span>
                 </div>
               </div>
 

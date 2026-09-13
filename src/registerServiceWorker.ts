@@ -6,6 +6,16 @@ export function registerServiceWorker() {
     return;
   }
 
+  // During local development and iframe preview, do not register SW to avoid stale caching
+  if (import.meta.env.DEV) {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (const registration of registrations) {
+        registration.unregister();
+      }
+    });
+    return;
+  }
+
   const register = () => {
     navigator.serviceWorker
       .register('/sw.js', { scope: '/' })

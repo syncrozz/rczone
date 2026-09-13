@@ -53,6 +53,7 @@ export interface Session {
   extensionsCount?: number;
   customerStoppedAlarmAt?: number; // Timestamp when customer pressed Stop Alarm / Finished early
   customerStoppedAlarmReason?: 'TIME_UP_STOPPED' | 'EARLY_STOPPED';
+  customRemainingInitialSeconds?: number;
 }
 
 export interface CustomerAlert {

@@ -30,7 +30,7 @@ interface ControlBoardProps {
   nowTimestamp: number;
   settings: AppSettings;
   isAdminMode?: boolean;
-  onOpenNewSession: (preselectedMachineId?: string) => void;
+  onOpenNewSession: (preselectedMachineId?: string, setRemaining?: boolean) => void;
   onPauseResumeSession: (session: Session) => void;
   onCompleteSession: (session: Session) => void;
   onExtendSession: (session: Session, minutes: number, price?: number) => void;
@@ -345,7 +345,7 @@ export const ControlBoard: React.FC<ControlBoardProps> = ({
               settings={settings}
               assetTypes={assetTypes}
               isAdminMode={isAdminMode}
-              onStartSession={() => onOpenNewSession(machine.id)}
+              onStartSession={(m, setRemaining) => onOpenNewSession(m.id, setRemaining)}
               onPauseResumeSession={onPauseResumeSession}
               onCompleteSession={onCompleteSession}
               onExtendSession={onExtendSession}

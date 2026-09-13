@@ -28,7 +28,7 @@ import {
   Truck,
 } from 'lucide-react';
 import { Machine, RidePackage, AppSettings, MachineType, AssetType } from '../types';
-import { resolveAssetType } from '../utils/storage';
+import { resolveAssetType, getAssetCategoryTextColor } from '../utils/storage';
 import { AssetIcon, isImageUrl } from './AssetIcon';
 import { playTapSound, playTimeUpAlarm, playEndingSoonSound } from '../utils/sound';
 
@@ -41,6 +41,7 @@ interface SettingsModalProps {
   settings: AppSettings;
   onUpdateSettings: (settings: AppSettings) => void;
   onAddMachine: (machine: Omit<Machine, 'id' | 'status'>) => void;
+  onUpdateMachineName?: (id: string, newName: string) => void;
   onDeleteMachine: (id: string) => void;
   onToggleMachineMaintenance: (machine: Machine) => void;
   onAddAssetType: (assetType: Omit<AssetType, 'id'>) => void;
@@ -69,6 +70,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   settings,
   onUpdateSettings,
   onAddMachine,
+  onUpdateMachineName,
   onDeleteMachine,
   onToggleMachineMaintenance,
   onAddAssetType,
@@ -87,6 +89,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [newMachineName, setNewMachineName] = useState('');
   const [selectedAssetTypeId, setSelectedAssetTypeId] = useState<string>('');
   const [showAddMachine, setShowAddMachine] = useState(false);
+
+  // Edit existing machine state
+  const [editingMachineId, setEditingMachineId] = useState<string | null>(null);
+  const [editingMachineName, setEditingMachineName] = useState<string>('');
+
+  const handleStartEditMachine = (m: Machine) => {
+    playTapSound(settings.soundEnabled);
+    setEditingMachineId(m.id);
+    setEditingMachineName(m.name);
+  };
+
+  const handleSaveEditMachine = (id: string) => {
+    const cleanName = editingMachineName.trim();
+    if (!cleanName) return;
+    playTapSound(settings.soundEnabled);
+    if (onUpdateMachineName) {
+      onUpdateMachineName(id, cleanName);
+    }
+    setEditingMachineId(null);
+    setEditingMachineName('');
+  };
+
+  const handleCancelEditMachine = () => {
+    playTapSound(settings.soundEnabled);
+    setEditingMachineId(null);
+    setEditingMachineName('');
+  };
 
   // Dynamic Asset Type state
   const [showAddAssetType, setShowAddAssetType] = useState(false);
@@ -507,68 +536,141 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 ) : (
                   machines.map((m) => {
                     const resolved = resolveAssetType(m.type || m.typeId, assetTypes);
+                    const isEditingThis = editingMachineId === m.id;
+
                     return (
                       <div
                         key={m.id}
-                        className="p-3.5 rounded-2xl border border-slate-800 bg-[#0c121c] flex items-center justify-between gap-3 hover:border-slate-700 transition-colors"
+                        id={`settings-machine-row-${m.id}`}
+                        className={`p-3 sm:p-3.5 rounded-2xl border transition-all ${
+                          isEditingThis
+                            ? 'border-amber-500/70 bg-[#0f1725] shadow-lg shadow-amber-500/10'
+                            : 'border-slate-800 bg-[#0c121c] hover:border-slate-700'
+                        }`}
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-10 h-10 rounded-xl bg-[#151f2e] border border-slate-700 flex items-center justify-center shrink-0 p-1">
-                            <AssetIcon icon={resolved.icon} name={m.name || resolved.name} size="md" className="w-6 h-6" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="font-black text-sm text-white truncate">
-                              {m.name}
-                            </div>
-                            <div className="text-[10px] text-slate-400 uppercase truncate">
-                              Status:{' '}
-                              <span
-                                className={`font-bold ${
-                                  m.status === 'READY'
-                                    ? 'text-emerald-400'
-                                    : m.status === 'MAINTENANCE'
-                                    ? 'text-rose-400'
-                                    : 'text-amber-400'
-                                }`}
-                              >
-                                {m.status}
+                        {isEditingThis ? (
+                          <div className="space-y-2.5 animate-in fade-in">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-black uppercase text-amber-400 flex items-center gap-1.5">
+                                <Edit2 className="w-3.5 h-3.5 text-amber-400" />
+                                Tukar Nama Unit Aset
+                              </span>
+                              <span className="text-[10px] font-mono text-slate-500 uppercase">
+                                ID: {m.id}
                               </span>
                             </div>
+
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                              <div className="w-10 h-10 rounded-xl bg-[#151f2e] border border-slate-700 flex items-center justify-center shrink-0 p-1 hidden sm:flex">
+                                <AssetIcon icon={resolved.icon} name={editingMachineName || m.name || resolved.name} size="md" className="w-6 h-6" />
+                              </div>
+                              <input
+                                type="text"
+                                value={editingMachineName}
+                                onChange={(e) => setEditingMachineName(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleSaveEditMachine(m.id);
+                                  } else if (e.key === 'Escape') {
+                                    handleCancelEditMachine();
+                                  }
+                                }}
+                                placeholder="cth: EXCAVATOR 6 / EXCAVATOR 7"
+                                className="flex-1 px-3 py-2 rounded-xl border border-amber-500/60 bg-[#151f2e] text-white text-xs font-bold focus:border-amber-400 focus:outline-none ring-1 ring-amber-500/20"
+                                autoFocus
+                              />
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveEditMachine(m.id)}
+                                  disabled={!editingMachineName.trim()}
+                                  className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 disabled:opacity-50 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-md"
+                                >
+                                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                  <span>Simpan</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={handleCancelEditMachine}
+                                  className="px-3 py-2 rounded-xl border border-slate-700 bg-[#151f2e] hover:bg-[#1d2a3d] text-slate-300 text-xs font-bold uppercase cursor-pointer transition-colors"
+                                >
+                                  Batal
+                                </button>
+                              </div>
+                            </div>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-10 h-10 rounded-xl bg-[#151f2e] border border-slate-700 flex items-center justify-center shrink-0 p-1">
+                                <AssetIcon icon={resolved.icon} name={m.name || resolved.name} size="md" className="w-6 h-6" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className={`font-black text-sm truncate ${getAssetCategoryTextColor(m, resolved.name)}`}>
+                                  {m.name}
+                                </div>
+                                <div className="text-[10px] text-slate-400 uppercase truncate">
+                                  Status:{' '}
+                                  <span
+                                    className={`font-bold ${
+                                      m.status === 'READY'
+                                        ? 'text-emerald-400'
+                                        : m.status === 'MAINTENANCE'
+                                        ? 'text-rose-400'
+                                        : 'text-amber-400'
+                                    }`}
+                                  >
+                                    {m.status}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
 
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              playTapSound(settings.soundEnabled);
-                              onToggleMachineMaintenance(m);
-                            }}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase border transition-colors cursor-pointer ${
-                              m.status === 'MAINTENANCE'
-                                ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
-                                : 'bg-[#151f2e] text-slate-300 border-slate-700 hover:border-amber-500/40'
-                            }`}
-                            title="Tukar mod penyelenggaraan"
-                          >
-                            <Wrench className="w-3.5 h-3.5 inline mr-1" />
-                            <span className="hidden sm:inline">
-                              {m.status === 'MAINTENANCE' ? 'Servis Aktif' : 'Servis'}
-                            </span>
-                          </button>
+                            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleStartEditMachine(m)}
+                                className="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black uppercase border border-slate-700 bg-[#151f2e] hover:bg-[#1d2a3d] hover:border-amber-500/40 text-amber-400 flex items-center gap-1.5 transition-colors cursor-pointer"
+                                title="Edit Nama Unit Aset"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">Edit</span>
+                              </button>
 
-                          <button
-                            type="button"
-                            onClick={() => {
-                              playTapSound(settings.soundEnabled);
-                              onDeleteMachine(m.id);
-                            }}
-                            className="p-2 rounded-xl text-slate-500 hover:text-rose-400 hover:bg-rose-950/30 transition-colors cursor-pointer"
-                            title="Padam Unit Aset"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  playTapSound(settings.soundEnabled);
+                                  onToggleMachineMaintenance(m);
+                                }}
+                                className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black uppercase border transition-colors cursor-pointer ${
+                                  m.status === 'MAINTENANCE'
+                                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+                                    : 'bg-[#151f2e] text-slate-300 border-slate-700 hover:border-amber-500/40'
+                                }`}
+                                title="Tukar mod penyelenggaraan"
+                              >
+                                <Wrench className="w-3.5 h-3.5 inline sm:mr-1" />
+                                <span className="hidden sm:inline">
+                                  {m.status === 'MAINTENANCE' ? 'Servis Aktif' : 'Servis'}
+                                </span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  playTapSound(settings.soundEnabled);
+                                  onDeleteMachine(m.id);
+                                }}
+                                className="p-1.5 sm:p-2 rounded-xl text-slate-500 hover:text-rose-400 hover:bg-rose-950/30 transition-colors cursor-pointer"
+                                title="Padam Unit Aset"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })

@@ -3,9 +3,12 @@ import {
   X, 
   Play, 
   User, 
+  Clock,
+  CheckCircle2,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { Machine, RidePackage, QueueItem, AppSettings, AssetType } from '../types';
-import { resolveAssetType } from '../utils/storage';
+import { resolveAssetType, getAssetCategoryTextColor } from '../utils/storage';
 import { AssetIcon } from './AssetIcon';
 import { playTapSound } from '../utils/sound';
 
@@ -18,12 +21,14 @@ interface NewSessionModalProps {
   assetTypes?: AssetType[];
   preselectedMachineId?: string;
   preselectedQueueItem?: QueueItem;
+  initialSetRemaining?: boolean;
   settings: AppSettings;
   onStart: (
     machineId: string,
     packageId: string,
     customerName?: string,
-    queueItemId?: string
+    queueItemId?: string,
+    customRemainingSeconds?: number
   ) => void;
 }
 
@@ -36,6 +41,7 @@ export const NewSessionModal: React.FC<NewSessionModalProps> = ({
   assetTypes,
   preselectedMachineId,
   preselectedQueueItem,
+  initialSetRemaining = false,
   settings,
   onStart,
 }) => {
@@ -43,6 +49,11 @@ export const NewSessionModal: React.FC<NewSessionModalProps> = ({
   const [selectedPackageId, setSelectedPackageId] = useState<string>('');
   const [customerName, setCustomerName] = useState<string>('');
   const [selectedQueueId, setSelectedQueueId] = useState<string>('');
+
+  // Custom Remaining Time state for Admin
+  const [isCustomRemaining, setIsCustomRemaining] = useState<boolean>(false);
+  const [customMinutes, setCustomMinutes] = useState<number>(19);
+  const [customSeconds, setCustomSeconds] = useState<number>(0);
 
   // Auto-fill states on open or changes
   useEffect(() => {
@@ -55,9 +66,11 @@ export const NewSessionModal: React.FC<NewSessionModalProps> = ({
         setSelectedMachineId('');
       }
 
+      let activePkg = packages[0];
       if (packages.length > 0) {
         const popular = packages.find((p) => p.isPopular);
-        setSelectedPackageId(popular ? popular.id : packages[0].id);
+        activePkg = popular ? popular : packages[0];
+        setSelectedPackageId(activePkg.id);
       }
 
       if (preselectedQueueItem) {
@@ -65,13 +78,29 @@ export const NewSessionModal: React.FC<NewSessionModalProps> = ({
         setSelectedQueueId(preselectedQueueItem.id);
         if (preselectedQueueItem.packageId) {
           setSelectedPackageId(preselectedQueueItem.packageId);
+          const found = packages.find((p) => p.id === preselectedQueueItem.packageId);
+          if (found) activePkg = found;
         }
       } else {
         setCustomerName('');
         setSelectedQueueId('');
       }
+
+      // Initialize custom remaining time
+      const buffer = settings.bufferMinutes ?? 3;
+      const totalPkgMins = (activePkg?.durationMinutes ?? 20) + buffer;
+      if (initialSetRemaining) {
+        setIsCustomRemaining(true);
+        // Default to totalPkgMins (or 19 if 23 mins)
+        setCustomMinutes(Math.max(1, totalPkgMins - 4));
+        setCustomSeconds(0);
+      } else {
+        setIsCustomRemaining(false);
+        setCustomMinutes(totalPkgMins);
+        setCustomSeconds(0);
+      }
     }
-  }, [isOpen, preselectedMachineId, preselectedQueueItem, availableMachines, packages]);
+  }, [isOpen, preselectedMachineId, preselectedQueueItem, availableMachines, packages, initialSetRemaining, settings.bufferMinutes]);
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -89,17 +118,42 @@ export const NewSessionModal: React.FC<NewSessionModalProps> = ({
 
   const selectedPkg = packages.find((p) => p.id === selectedPackageId);
   const bufferMinutes = settings.bufferMinutes ?? 3;
+  const totalDurationMinutes = (selectedPkg?.durationMinutes ?? 20) + bufferMinutes;
+  const totalDurationSeconds = totalDurationMinutes * 60;
+
+  // Calculate elapsed info for live preview
+  const customTotalSeconds = isCustomRemaining ? (customMinutes * 60 + customSeconds) : totalDurationSeconds;
+  const elapsedSeconds = Math.max(0, totalDurationSeconds - customTotalSeconds);
+  const elapsedMinutesPart = Math.floor(elapsedSeconds / 60);
+  const elapsedSecondsPart = elapsedSeconds % 60;
+
+  const handleSelectPackage = (pkg: RidePackage) => {
+    playTapSound(settings.soundEnabled);
+    setSelectedPackageId(pkg.id);
+    if (!isCustomRemaining) {
+      setCustomMinutes(pkg.durationMinutes + bufferMinutes);
+      setCustomSeconds(0);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedMachineId || !selectedPkg) return;
+
+    let finalCustomSecs: number | undefined = undefined;
+    if (isCustomRemaining) {
+      const calcSecs = customMinutes * 60 + customSeconds;
+      if (calcSecs <= 0) return;
+      finalCustomSecs = calcSecs;
+    }
 
     playTapSound(settings.soundEnabled);
     onStart(
       selectedMachineId,
       selectedPkg.id,
       customerName.trim() || 'Walk-in',
-      selectedQueueId || undefined
+      selectedQueueId || undefined,
+      finalCustomSecs
     );
     onClose();
   };
@@ -208,7 +262,7 @@ export const NewSessionModal: React.FC<NewSessionModalProps> = ({
                         />
                       </span>
                       <div className="min-w-0 flex-1">
-                        <div className="font-mono font-black text-xs sm:text-sm text-white truncate">
+                        <div className={`font-mono font-black text-xs sm:text-sm truncate ${getAssetCategoryTextColor(m, assetTypeInfo.name)}`}>
                           {m.name}
                         </div>
                         <div className="text-[10px] font-mono text-emerald-400 font-bold uppercase tracking-wider mt-0.5">
@@ -235,10 +289,7 @@ export const NewSessionModal: React.FC<NewSessionModalProps> = ({
                   <button
                     key={pkg.id}
                     type="button"
-                    onClick={() => {
-                      playTapSound(settings.soundEnabled);
-                      setSelectedPackageId(pkg.id);
-                    }}
+                    onClick={() => handleSelectPackage(pkg)}
                     className={`p-2.5 sm:p-3 rounded-2xl border flex flex-col items-center justify-center text-center transition-all cursor-pointer relative ${
                       isSelected
                         ? 'border-amber-400 bg-[#162132] ring-2 ring-amber-400/40 shadow-md'
@@ -265,6 +316,163 @@ export const NewSessionModal: React.FC<NewSessionModalProps> = ({
                 );
               })}
             </div>
+          </div>
+
+          {/* PILIHAN ADMIN: SET MASA BERBAKI */}
+          <div className="p-3.5 rounded-2xl bg-[#0c121c] border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="w-8 h-8 rounded-xl bg-[#151f2e] border border-slate-700 flex items-center justify-center text-amber-400 shrink-0">
+                  <Clock className="w-4 h-4 text-amber-400" />
+                </span>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-black uppercase text-white tracking-wider truncate">
+                      SET MASA BERBAKI
+                    </span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/40 font-mono font-bold shrink-0">
+                      ADMIN
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-mono truncate">
+                    Sesi telah dimulakan secara manual oleh pengganti
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                id="btn-toggle-set-remaining"
+                onClick={() => {
+                  playTapSound(settings.soundEnabled);
+                  const next = !isCustomRemaining;
+                  setIsCustomRemaining(next);
+                  if (next) {
+                    if (customMinutes === 0 && customSeconds === 0) {
+                      setCustomMinutes(Math.max(1, totalDurationMinutes - 4));
+                      setCustomSeconds(0);
+                    }
+                  }
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-black uppercase transition-all cursor-pointer border shrink-0 flex items-center gap-1.5 ${
+                  isCustomRemaining
+                    ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/20 font-bold'
+                    : 'bg-[#151f2e] text-slate-300 border-slate-700 hover:border-amber-500/40 hover:text-white'
+                }`}
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>{isCustomRemaining ? 'AKTIF' : 'LARAS BAKI'}</span>
+              </button>
+            </div>
+
+            {isCustomRemaining && (
+              <div className="pt-2.5 border-t border-slate-800 space-y-3 animate-in fade-in duration-200">
+                <div className="bg-[#151f2e] p-3 rounded-xl border border-amber-500/30">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[10px] font-mono font-black uppercase text-amber-400 tracking-wider">
+                      MASUKKAN MASA SEBENAR YANG BERBAKI
+                    </label>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      Asal: {totalDurationMinutes}m
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="flex-1">
+                      <span className="text-[10px] font-mono text-slate-400 block mb-1">
+                        Minit (0 - {Math.max(totalDurationMinutes, 120)}):
+                      </span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={Math.max(totalDurationMinutes, 180)}
+                        value={customMinutes}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10);
+                          setCustomMinutes(isNaN(val) ? 0 : Math.max(0, Math.min(val, 180)));
+                        }}
+                        className="w-full px-3 py-2 rounded-xl border border-amber-500/60 bg-[#0c121c] text-amber-400 text-lg sm:text-xl font-mono font-black text-center focus:border-amber-400 focus:outline-none ring-1 ring-amber-500/20"
+                        placeholder="19"
+                        autoFocus
+                      />
+                    </div>
+
+                    <span className="text-amber-400 font-mono font-black text-2xl pt-4">:</span>
+
+                    <div className="w-24 sm:w-28">
+                      <span className="text-[10px] font-mono text-slate-400 block mb-1">
+                        Saat (0 - 59):
+                      </span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={59}
+                        value={customSeconds}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10);
+                          setCustomSeconds(isNaN(val) ? 0 : Math.max(0, Math.min(val, 59)));
+                        }}
+                        className="w-full px-3 py-2 rounded-xl border border-amber-500/60 bg-[#0c121c] text-amber-400 text-lg sm:text-xl font-mono font-black text-center focus:border-amber-400 focus:outline-none ring-1 ring-amber-500/20"
+                        placeholder="00"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Butang Pintas Penyelarasan Minit */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                  <span className="text-[10px] font-mono text-slate-400 uppercase shrink-0">Pintas Laras:</span>
+                  {[-1, -2, -3, -4, -5].map((diff) => (
+                    <button
+                      key={diff}
+                      type="button"
+                      onClick={() => {
+                        playTapSound(settings.soundEnabled);
+                        setCustomMinutes((prev) => Math.max(1, prev + diff));
+                      }}
+                      className="px-2 py-1 rounded-lg bg-[#151f2e] hover:bg-[#1d2a3d] border border-slate-700 text-xs font-mono font-bold text-slate-300 hover:text-white transition-colors cursor-pointer shrink-0"
+                    >
+                      {diff}m
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playTapSound(settings.soundEnabled);
+                      setCustomMinutes(totalDurationMinutes);
+                      setCustomSeconds(0);
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-[#151f2e] hover:bg-[#1d2a3d] border border-amber-500/30 text-xs font-mono font-bold text-amber-400 hover:text-amber-300 transition-colors cursor-pointer shrink-0"
+                  >
+                    Penuh ({totalDurationMinutes}m)
+                  </button>
+                </div>
+
+                {/* Live Informational Breakdown */}
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs font-mono text-slate-200 space-y-1">
+                  <div className="flex items-center gap-1.5 text-amber-400 font-bold mb-1">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>Pratonton Penyelarasan Masa</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300">
+                    • Tempoh slot penuh: <span className="text-white font-bold">{totalDurationMinutes} minit</span>
+                  </p>
+                  <p className="text-[11px] text-slate-300">
+                    • Anggaran telah berjalan manual:{' '}
+                    <span className="text-amber-300 font-bold">
+                      {elapsedMinutesPart} minit {elapsedSecondsPart > 0 ? `${elapsedSecondsPart} saat` : ''}
+                    </span>
+                  </p>
+                  <p className="text-[11px] text-slate-300">
+                    • Countdown platform bermula tepat pada:{' '}
+                    <span className="text-emerald-400 font-bold text-xs sm:text-sm">
+                      {String(customMinutes).padStart(2, '0')}:{String(customSeconds).padStart(2, '0')}
+                    </span>{' '}
+                    hingga <span className="text-rose-400 font-bold">00:00</span>
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* STEP 3: NAMA PELANGGAN (OPTIONAL) */}
@@ -297,16 +505,20 @@ export const NewSessionModal: React.FC<NewSessionModalProps> = ({
               </div>
               <div className="text-right">
                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
-                  TEMPOH
+                  {isCustomRemaining ? 'BAKI MASA MULA' : 'TEMPOH'}
                 </span>
                 <span className="text-base sm:text-lg font-black text-amber-400">
-                  {selectedPkg.durationMinutes + bufferMinutes} MIN
+                  {isCustomRemaining
+                    ? `${String(customMinutes).padStart(2, '0')}:${String(customSeconds).padStart(2, '0')}`
+                    : `${totalDurationMinutes} MIN`}
                 </span>
-                {bufferMinutes > 0 && (
-                  <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
-                    {selectedPkg.durationMinutes} min + {bufferMinutes} min bertenang
-                  </span>
-                )}
+                <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
+                  {isCustomRemaining
+                    ? `Daripada pakej asal ${totalDurationMinutes} min`
+                    : bufferMinutes > 0
+                    ? `${selectedPkg.durationMinutes} min + ${bufferMinutes} min bertenang`
+                    : `${selectedPkg.durationMinutes} min`}
+                </span>
               </div>
             </div>
           )}
@@ -314,11 +526,20 @@ export const NewSessionModal: React.FC<NewSessionModalProps> = ({
           {/* PRIMARY ACTION */}
           <button
             type="submit"
-            disabled={!selectedMachineId || !selectedPkg || availableMachines.length === 0}
+            disabled={
+              !selectedMachineId || 
+              !selectedPkg || 
+              availableMachines.length === 0 || 
+              (isCustomRemaining && customMinutes === 0 && customSeconds === 0)
+            }
             className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 disabled:opacity-40 disabled:pointer-events-none text-slate-950 font-chakra font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all cursor-pointer active:scale-[0.98]"
           >
             <Play className="w-4 h-4 fill-slate-950 text-slate-950" />
-            <span>MULAKAN SESI</span>
+            <span>
+              {isCustomRemaining
+                ? `MULAKAN SESI (BAKI ${String(customMinutes).padStart(2, '0')}:${String(customSeconds).padStart(2, '0')})`
+                : 'MULAKAN SESI'}
+            </span>
           </button>
         </form>
       </div>

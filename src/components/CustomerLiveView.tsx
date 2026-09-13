@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { Session, Machine, AppSettings } from '../types';
 import { formatClockTime, formatTimeRemaining } from '../utils/format';
-import { resolveAssetType, loadInitialData } from '../utils/storage';
+import { resolveAssetType, loadInitialData, getAssetCategoryTextColor } from '../utils/storage';
 import { AssetIcon } from './AssetIcon';
 import { notifyCustomerAlarmStopped, subscribeToCloudSync, CloudSyncStatus } from '../services/firebaseSync';
 import { parseCustomerLiveRoute, LegacyCustomerParams } from '../utils/token';
@@ -728,7 +728,7 @@ export const CustomerLiveView: React.FC<CustomerLiveViewProps> = ({
               <span className="text-[11px] font-mono text-slate-400 block uppercase">
                 Unit RC
               </span>
-              <span className="text-sm font-mono font-bold text-amber-400 flex items-center justify-end gap-1.5">
+              <span className={`text-sm font-mono font-bold flex items-center justify-end gap-1.5 ${getAssetCategoryTextColor(machineName, machineType)}`}>
                 <AssetIcon
                   icon={getMachineIcon()}
                   name={machineName}

@@ -16,6 +16,7 @@ import { Session, Machine, AppSettings } from '../types';
 import { generateQrDataUrl, getLiveSessionUrl, getWhatsAppShareUrl, formatPhoneNumberForWhatsApp } from '../utils/qr';
 import { formatClockTime } from '../utils/format';
 import { playTapSound } from '../utils/sound';
+import { getAssetCategoryTextColor } from '../utils/storage';
 
 interface SessionQrModalProps {
   isOpen: boolean;
@@ -125,7 +126,7 @@ export const SessionQrModal: React.FC<SessionQrModalProps> = ({
               <span className="text-[10px] font-mono uppercase text-slate-400">
                 Unit RC & Pelanggan
               </span>
-              <div className="font-chakra font-black text-white text-sm uppercase">
+              <div className={`font-chakra font-black text-sm uppercase ${getAssetCategoryTextColor(machine)}`}>
                 {machine.name}
               </div>
               <div className="text-xs text-amber-400 font-mono">

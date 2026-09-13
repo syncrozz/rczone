@@ -142,6 +142,42 @@ export function resolveAssetType(
   };
 }
 
+/**
+ * Resolves high-contrast font color by asset category:
+ * - EXCAVATOR -> kuning/oren (text-amber-400)
+ * - BULLDOZER -> biru (text-sky-400)
+ * - DUMP TRUCK -> hijau (text-emerald-400)
+ * All units within the same category will use the exact same color.
+ */
+export function getAssetCategoryTextColor(
+  machineOrType?: { type?: string; typeId?: string; name?: string; customTypeLabel?: string } | string,
+  extraTypeName?: string
+): string {
+  let combined = '';
+  if (typeof machineOrType === 'string') {
+    combined = `${machineOrType} ${extraTypeName || ''}`.toLowerCase();
+  } else if (machineOrType) {
+    combined = `${machineOrType.type || ''} ${machineOrType.typeId || ''} ${machineOrType.customTypeLabel || ''} ${machineOrType.name || ''} ${extraTypeName || ''}`.toLowerCase();
+  }
+
+  // 1. EXCAVATOR -> kuning/oren
+  if (combined.includes('excavator') || combined.includes('exc')) {
+    return 'text-amber-400';
+  }
+
+  // 2. BULLDOZER -> biru
+  if (combined.includes('bulldozer') || combined.includes('bdz') || combined.includes('dozer')) {
+    return 'text-sky-400';
+  }
+
+  // 3. DUMP TRUCK -> hijau
+  if (combined.includes('dump') || combined.includes('truck') || combined.includes('dtk')) {
+    return 'text-emerald-400';
+  }
+
+  return 'text-slate-100';
+}
+
 export function loadInitialData(): {
   machines: Machine[];
   assetTypes: AssetType[];

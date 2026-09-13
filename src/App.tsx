@@ -92,6 +92,7 @@ export default function App() {
   const [newSessionOpen, setNewSessionOpen] = useState(false);
   const [preselectedMachineId, setPreselectedMachineId] = useState<string | undefined>(undefined);
   const [preselectedQueueItem, setPreselectedQueueItem] = useState<QueueItem | undefined>(undefined);
+  const [initialSetRemaining, setInitialSetRemaining] = useState<boolean>(false);
 
   // QR Live Tracker Modal
   const [qrModalOpen, setQrModalOpen] = useState(false);
@@ -407,17 +408,31 @@ export default function App() {
     machineId: string,
     packageId: string,
     customerName?: string,
-    queueItemId?: string
+    queueItemId?: string,
+    customRemainingSeconds?: number
   ) => {
     const targetMachine = machines.find((m) => m.id === machineId);
     const targetPackage = packages.find((p) => p.id === packageId || p.name === packageId) || packages[0];
     if (!targetMachine || !targetPackage) return;
 
     const extraBuffer = typeof settings.bufferMinutes === 'number' ? settings.bufferMinutes : 3;
-    const totalDurationMinutes = targetPackage.durationMinutes + extraBuffer;
-    const startTime = Date.now();
-    const durationMs = totalDurationMinutes * 60 * 1000;
-    const endTime = startTime + durationMs;
+    let totalDurationMinutes = targetPackage.durationMinutes + extraBuffer;
+    let totalDurationSeconds = totalDurationMinutes * 60;
+
+    const now = Date.now();
+    let startTime = now;
+    let endTime = now + totalDurationSeconds * 1000;
+
+    // Jika Admin menetapkan masa berbaki (cth: sesi sudah berjalan manual oleh pengganti)
+    if (typeof customRemainingSeconds === 'number' && customRemainingSeconds > 0) {
+      if (customRemainingSeconds > totalDurationSeconds) {
+        totalDurationMinutes = Math.ceil(customRemainingSeconds / 60);
+        totalDurationSeconds = totalDurationMinutes * 60;
+      }
+      const elapsedSeconds = Math.max(0, totalDurationSeconds - customRemainingSeconds);
+      startTime = now - elapsedSeconds * 1000;
+      endTime = now + customRemainingSeconds * 1000;
+    }
 
     const publicSessionToken = generateUniquePublicToken(sessions);
     const newSessionId = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -437,6 +452,7 @@ export default function App() {
       accumulatedPauseMs: 0,
       isPaused: false,
       status: 'ACTIVE',
+      customRemainingInitialSeconds: customRemainingSeconds,
     };
 
     // Update sessions, machine status, and queue atomically
@@ -646,6 +662,21 @@ export default function App() {
     updateMachinesState([...machines, machine]);
   };
 
+  const handleUpdateMachineName = (id: string, newName: string) => {
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+    const updatedMachines = machines.map((m) =>
+      m.id === id ? { ...m, name: trimmed, updatedAt: Date.now() } : m
+    );
+    const updatedSessions = sessions.map((s) =>
+      s.machineId === id ? { ...s, machineName: trimmed } : s
+    );
+    syncBatchState({
+      machines: updatedMachines,
+      sessions: updatedSessions,
+    });
+  };
+
   const handleDeleteMachine = (id: string) => {
     updateMachinesState(machines.filter((m) => m.id !== id));
   };
@@ -769,15 +800,18 @@ export default function App() {
     );
   };
 
-  const handleOpenNewSessionProtected = (machineId?: string) => {
+  const handleOpenNewSessionProtected = (machineId?: string, setRemaining = false) => {
     handleRequireAdmin(
       () => {
         setPreselectedMachineId(machineId);
         setPreselectedQueueItem(undefined);
+        setInitialSetRemaining(setRemaining);
         setNewSessionOpen(true);
       },
-      'Kebenaran Mula Sesi',
-      'Sila masukkan Kod PIN Admin (6381) untuk memulakan sesi permainan.'
+      setRemaining ? 'Set Masa Berbaki' : 'Kebenaran Mula Sesi',
+      setRemaining
+        ? 'Sila masukkan Kod PIN Admin (6381) untuk menyelaraskan baki masa sesi manual.'
+        : 'Sila masukkan Kod PIN Admin (6381) untuk memulakan sesi permainan.'
     );
   };
 
@@ -968,6 +1002,7 @@ export default function App() {
           setNewSessionOpen(false);
           setPreselectedMachineId(undefined);
           setPreselectedQueueItem(undefined);
+          setInitialSetRemaining(false);
         }}
         availableMachines={availableMachines}
         assetTypes={assetTypes}
@@ -975,6 +1010,7 @@ export default function App() {
         queue={queue}
         preselectedMachineId={preselectedMachineId}
         preselectedQueueItem={preselectedQueueItem}
+        initialSetRemaining={initialSetRemaining}
         settings={settings}
         onStart={handleStartSession}
       />
@@ -1043,6 +1079,7 @@ export default function App() {
         settings={settings}
         onUpdateSettings={updateSettingsState}
         onAddMachine={handleAddMachine}
+        onUpdateMachineName={handleUpdateMachineName}
         onDeleteMachine={handleDeleteMachine}
         onToggleMachineMaintenance={handleToggleMaintenance}
         onAddAssetType={handleAddAssetType}
